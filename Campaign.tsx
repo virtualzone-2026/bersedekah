@@ -3,13 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// 🚀 FIXED: Menambahkan deklarasi Interface tipe data props agar TypeScript lolos kompilasi
 interface CampaignProps {
   initialData?: any[];
 }
 
 export default function Campaign({ initialData }: CampaignProps) {
-  // 🚀 FIXED: Menggunakan initialData dari server sebagai nilai default awal state
   const [programs, setPrograms] = useState<any[]>(initialData || []);
   const [loading, setLoading] = useState(!initialData || initialData.length === 0);
   
@@ -17,7 +15,6 @@ export default function Campaign({ initialData }: CampaignProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    // Jalankan fetch real-time untuk memperbarui data di latar belakang
     fetch('/api/programs?v=' + Date.now(), {
       cache: 'no-store',
       headers: {
@@ -52,58 +49,34 @@ export default function Campaign({ initialData }: CampaignProps) {
 
   return (
     <div className="space-y-8">
-      
       {/* FILTER KATEGORI & SEARCH BAR */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 w-full">
-        
-        {/* Navigasi Filter Kategori */}
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setSelectedCategory('SEMUA')}
-            className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm border ${
-              selectedCategory === 'SEMUA'
-                ? 'bg-yellow-400 text-gray-900 border-yellow-400 font-black shadow-yellow-100'
-                : 'bg-white text-gray-500 hover:text-emerald-600 border-gray-200'
-            }`}
-          >
-            Semua
-          </button>
-          <button
-            onClick={() => setSelectedCategory('KEMANUSIAAN')}
-            className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm border ${
-              selectedCategory === 'KEMANUSIAAN'
-                ? 'bg-yellow-400 text-gray-900 border-yellow-400 font-black shadow-yellow-100'
-                : 'bg-white text-gray-500 hover:text-emerald-600 border-gray-200'
-            }`}
-          >
-            Kemanusiaan
-          </button>
-          <button
-            onClick={() => setSelectedCategory('PENDIDIKAN')}
-            className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm border ${
-              selectedCategory === 'PENDIDIKAN'
-                ? 'bg-yellow-400 text-gray-900 border-yellow-400 font-black shadow-yellow-100'
-                : 'bg-white text-gray-500 hover:text-emerald-600 border-gray-200'
-            }`}
-          >
-            Pendidikan
-          </button>
+          {['SEMUA', 'KEMANUSIAAN', 'PENDIDIKAN'].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm border ${
+                selectedCategory === cat
+                  ? 'bg-yellow-400 text-gray-900 border-yellow-400 font-black shadow-yellow-100'
+                  : 'bg-white text-gray-500 hover:text-emerald-600 border-gray-200'
+              }`}
+            >
+              {cat.toLowerCase()}
+            </button>
+          ))}
         </div>
 
-        {/* Input Box Pencarian */}
         <div className="relative max-w-xs w-full">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">
-            🔍
-          </span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">🔍</span>
           <input
             type="text"
             placeholder="Cari galang dana..."
-            className="w-full bg-white border border-gray-200 text-xs font-semibold text-gray-700 pl-10 pr-4 py-3.5 rounded-xl placeholder-gray-400 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 shadow-sm transition-all"
+            className="w-full bg-white border border-gray-200 text-xs font-semibold text-gray-700 pl-10 pr-4 py-3.5 rounded-xl placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-sm transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-
       </div>
 
       {/* GRID LAYOUT CARD */}
@@ -122,11 +95,9 @@ export default function Campaign({ initialData }: CampaignProps) {
                     {program.category}
                   </span>
                 </div>
-
                 <h2 className="font-bold text-gray-800 mt-4 text-base uppercase line-clamp-2 min-h-[3rem]">
                   {program.title}
                 </h2>
-                
                 <div className="flex justify-between text-[11px] text-gray-400 font-semibold mt-4">
                   <div>
                     <p>TERKUMPUL</p>
@@ -138,7 +109,6 @@ export default function Campaign({ initialData }: CampaignProps) {
                   </div>
                 </div>
               </div>
-
               <div className="mt-5 pt-4 border-t border-gray-50">
                 <Link
                   href={`/campaign/${program.slug}`}
@@ -151,7 +121,6 @@ export default function Campaign({ initialData }: CampaignProps) {
           ))}
         </div>
       )}
-
     </div>
   );
 }
