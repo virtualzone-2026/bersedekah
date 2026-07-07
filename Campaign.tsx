@@ -24,7 +24,9 @@ export default function Campaign({ initialData }: CampaignProps) {
     })
       .then((res) => res.json())
       .then((json) => {
-        if (json.success) setPrograms(json.data);
+        if (json.success && json.data) {
+          setPrograms(json.data);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -36,6 +38,13 @@ export default function Campaign({ initialData }: CampaignProps) {
   if (loading && programs.length === 0) {
     return <div className="text-center py-16 text-gray-500 font-medium text-sm">Memuat program kebaikan...</div>;
   }
+
+  // 🚀 OTOMATISASI DAFTAR TOMBOL KATEGORI DARI DATA YANG ADA
+  // Ini membuat program dengan kategori baru otomatis punya tombol filter sendiri tanpa hardcode manual
+  const availableCategories = [
+    'SEMUA',
+    ...Array.from(new Set(programs.map((p) => p.category?.toUpperCase()).filter(Boolean)))
+  ];
 
   const filteredPrograms = programs.filter((program) => {
     const matchesCategory = 
@@ -51,8 +60,10 @@ export default function Campaign({ initialData }: CampaignProps) {
     <div className="space-y-8">
       {/* FILTER KATEGORI & SEARCH BAR */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 w-full">
+        
+        {/* Navigasi Filter Kategori */}
         <div className="flex flex-wrap items-center gap-3">
-          {['SEMUA', 'KEMANUSIAAN', 'PENDIDIKAN'].map((cat) => (
+          {availableCategories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
@@ -67,6 +78,7 @@ export default function Campaign({ initialData }: CampaignProps) {
           ))}
         </div>
 
+        {/* Input Box Pencarian */}
         <div className="relative max-w-xs w-full">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">🔍</span>
           <input

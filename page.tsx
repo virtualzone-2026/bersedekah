@@ -1,42 +1,8 @@
 // app/program/page.tsx
 import React from 'react';
-import { createClient } from '@sanity/client';
-// 🚀 MEMANGGIL KOMPONEN CLIENT DARI SATU FOLDER YANG SAMA
-import CampaignClientList from './CampaignClientList';
+import Campaign from '@/components/Campaign'; // 🚀 Ini memanggil seluruh kode UI komponen Campaign Anda
 
-const sanityClient = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
-  useCdn: false,
-  apiVersion: '2024-01-01',
-  token: process.env.SANITY_WRITE_TOKEN,
-});
-
-async function getProgramsData() {
-  try {
-    const query = `*[_type == "donationProgram"] | order(_createdAt desc)`;
-    const rawData = await sanityClient.fetch(query);
-    
-    return rawData.map((p: any) => ({
-      id: p._id,
-      slug: p.slug?.current || '',
-      title: p.title || '',
-      category: p.category || 'UMUM',
-      image: p.image?.asset ? `https://cdn.sanity.io/images/jmgc1ejr/production/${p.image.asset._ref.replace('image-', '').replace('-jpg', '.jpg').replace('-png', '.png')}` : '/images/placeholder.jpg',
-      collectedRaw: p.collectedAmount || 0,
-      targetAmount: p.targetAmount || 50000000,
-      collected: `Rp ${(p.collectedAmount || 0).toLocaleString('id-ID')}`,
-      target: `Rp ${(p.targetAmount || 50000000).toLocaleString('id-ID')}`,
-    }));
-  } catch (error) {
-    console.error('Failed to fetch server data:', error);
-    return [];
-  }
-}
-
-export default async function ProgramPage() {
-  const initialPrograms = await getProgramsData();
-
+export default function ProgramPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4 md:px-16">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -46,8 +12,8 @@ export default async function ProgramPage() {
         </div>
 
         <div className="bg-transparent">
-          {/* 🚀 DIJAMIN SUSKSES: Mengalirkan data ke komponen ber-interface valid */}
-          <CampaignClientList initialData={initialPrograms} />
+          {/* 🚀 Seluruh isi card donasi, gambar, & filter dirender otomatis di sini */}
+          <Campaign />
         </div>
       </div>
     </div>
