@@ -1,13 +1,16 @@
+// components/Campaign.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+// 🚀 1. Daftarkan interface props agar TypeScript tahu Campaign menerima initialData
 interface CampaignProps {
   initialData?: any[];
 }
 
 export default function Campaign({ initialData }: CampaignProps) {
+  // 🚀 2. Gunakan initialData dari server sebagai nilai default state agar langsung muncul tanpa loading screen
   const [programs, setPrograms] = useState<any[]>(initialData || []);
   const [loading, setLoading] = useState(!initialData || initialData.length === 0);
   
@@ -15,6 +18,7 @@ export default function Campaign({ initialData }: CampaignProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
+    // Sinkronisasi data di background untuk memastikan nominal donasi selalu paling baru (real-time)
     fetch('/api/programs?v=' + Date.now(), {
       cache: 'no-store',
       headers: {
@@ -39,8 +43,7 @@ export default function Campaign({ initialData }: CampaignProps) {
     return <div className="text-center py-16 text-gray-500 font-medium text-sm">Memuat program kebaikan...</div>;
   }
 
-  // 🚀 OTOMATISASI DAFTAR TOMBOL KATEGORI DARI DATA YANG ADA
-  // Ini membuat program dengan kategori baru otomatis punya tombol filter sendiri tanpa hardcode manual
+  // 🚀 3. Membuat daftar tombol kategori otomatis sesuai data yang ada di database Sanity
   const availableCategories = [
     'SEMUA',
     ...Array.from(new Set(programs.map((p) => p.category?.toUpperCase()).filter(Boolean)))
@@ -60,8 +63,7 @@ export default function Campaign({ initialData }: CampaignProps) {
     <div className="space-y-8">
       {/* FILTER KATEGORI & SEARCH BAR */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 w-full">
-        
-        {/* Navigasi Filter Kategori */}
+        {/* Navigasi Kategori Dinamis */}
         <div className="flex flex-wrap items-center gap-3">
           {availableCategories.map((cat) => (
             <button
@@ -78,7 +80,7 @@ export default function Campaign({ initialData }: CampaignProps) {
           ))}
         </div>
 
-        {/* Input Box Pencarian */}
+        {/* Input Pencarian */}
         <div className="relative max-w-xs w-full">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm">🔍</span>
           <input
