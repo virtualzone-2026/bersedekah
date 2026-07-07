@@ -1,53 +1,66 @@
 // app/program/page.tsx
+// 🚀 FIXED: Menghapus 'use client' agar sinkron dengan dinamika data Sanity CMS secara real-time!
+
 import React from 'react';
-import { createClient } from '@sanity/client';
-import Campaign from '@/components/Campaign'; 
+import Campaign from '@/components/Campaign';
 
-const sanityClient = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
-  useCdn: false,
-  apiVersion: '2024-01-01',
-  token: process.env.SANITY_WRITE_TOKEN,
-});
+// 🚀 JURUS SAKTI ANTI-CACHE: Memaksa Next.js mengambil data segar dari API Sanity setiap halaman diakses
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
+// Fungsi pembantu untuk mengambil data langsung dari API internal secara aman di level Server
 async function getProgramsData() {
   try {
-    const query = `*[_type == "donationProgram"] | order(_createdAt desc)`;
-    const rawData = await sanityClient.fetch(query);
-    
-    return rawData.map((p: any) => ({
-      id: p._id,
-      slug: p.slug?.current || '',
-      title: p.title || '',
-      category: p.category || 'UMUM',
-      image: p.image?.asset ? `https://cdn.sanity.io/images/jmgc1ejr/production/${p.image.asset._ref.replace('image-', '').replace('-jpg', '.jpg').replace('-png', '.png')}` : '/images/placeholder.jpg',
-      collectedRaw: p.collectedAmount || 0,
-      targetAmount: p.targetAmount || 50000000,
-      collected: `Rp ${(p.collectedAmount || 0).toLocaleString('id-ID')}`,
-      target: `Rp ${(p.targetAmount || 50000000).toLocaleString('id-ID')}`,
-    }));
+    // Memanggil API route programs lokal dengan menyuntikkan timestamp untuk mematikan cache di tingkat server cdn
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/programs?v=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    });
+
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.success ? json.data : [];
   } catch (error) {
-    console.error('Failed to fetch server data:', error);
+    console.error('🔥 Server Fetch Error di Halaman Program:', error);
     return [];
   }
 }
 
 export default async function ProgramPage() {
+  // Mengambil data programs real-time langsung saat request masuk ke server
   const initialPrograms = await getProgramsData();
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4 md:px-16">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-black text-gray-800">Program Kebaikan Yayasan</h1>
-          <p className="text-xs text-gray-400 mt-1">Salurkan infak terbaik Anda untuk syiar dakwah umat</p>
+    // 🚀 FIXED: Menyelaraskan md:px-12 menjadi md:px-16 agar presisi lurus simetris dengan halaman Home & Blog
+    <div className="min-h-screen bg-gray-50 px-4 md:px-16 py-12">
+      {/* 🚀 FIXED: Mengubah max-w-6xl menjadi max-w-5xl agar selaras 100% dengan Header & Footer */}
+      <div className="max-w-5xl mx-auto space-y-10">
+        
+        {/* ===================================================================
+            HEADER JUDUL HALAMAN (MINIMALIS & TEGAS)
+            =================================================================== */}
+        <div className="border-l-4 border-emerald-500 pl-6 py-1.5">
+          {/* Menyelaraskan warna ke abu-abu gelap #333333 khas Liputan6 agar senada dengan halaman lainnya */}
+          <h1 className="text-2xl md:text-3xl font-extrabold text-[#333333] tracking-tight">
+            Semua Program Kebaikan
+          </h1>
+          <p className="text-gray-500 mt-1 font-medium text-sm">
+            Jelajahi dan salurkan infak terbaik Anda secara instan amanah melalui QRIS terintegrasi
+          </p>
         </div>
 
+        {/* ===================================================================
+            GRID COMPONENT: MENAMPILKAN CARDS & FITUR FILTERING DATA REAL-TIME
+            =================================================================== */}
         <div className="bg-transparent">
-          {/* @ts-ignore */}
+          {/* 🚀 FIXED: Mengirimkan data segar dari server ke dalam komponen Client <Campaign /> */}
           <Campaign initialData={initialPrograms} />
         </div>
+
       </div>
     </div>
   );
