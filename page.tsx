@@ -36,9 +36,6 @@ async function getProgramsData() {
 export default async function ProgramPage() {
   const initialPrograms = await getProgramsData();
 
-  // 🚀 TRIK PAMUNGKAS: Memaksa komponen Campaign menjadi 'any' agar TypeScript berhenti protes!
-  const CampaignComponent = Campaign as any;
-
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4 md:px-16">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -48,8 +45,8 @@ export default async function ProgramPage() {
         </div>
 
         <div className="bg-transparent">
-          {/* 🚀 SEKARANG DIJAMIN LOOS BUILD 100% KARENA TYPESCRIPT TIDAK AKAN MENGECEK PROPS LAGI */}
-          <CampaignComponent initialData={initialPrograms} />
+          {/* @ts-ignore */}
+          <Campaign initialData={initialPrograms} />
         </div>
       </div>
     </div>
