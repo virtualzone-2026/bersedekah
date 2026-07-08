@@ -9,12 +9,12 @@ const sanityClient = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   apiVersion: '2026-06-20', 
-  useCdn: false, // Wajib false agar saat status diubah admin, angka depan langsung berubah seketika
+  useCdn: false,
 });
 
 export async function GET() {
   try {
-    // 🚀 SAKTI: Query GROQ ini otomatis menghitung (sum) totalAmount dari transaksi yang berstatus "Success"
+    // 🚀 FIXED: Menggunakan coalesce() agar jika sum mengembalikan null, otomatis diubah menjadi angka 0 murni!
     const query = `*[_type == "program"] | order(_createdAt desc) {
       "id": _id,
       "slug": slug.current,
@@ -23,9 +23,7 @@ export async function GET() {
       "image": image.asset->url,
       targetAmount,
       description,
-      // Menghitung otomatis total uang dari transaksi yang sukses secara real-time
-      "autoCollectedRaw": sum(*[_type == "donationTransaction" && slug == ^.slug.current && status == "Success"].totalAmount),
-      // Mengambil daftar nama donatur yang sukses untuk ditampilkan di halaman detail jika butuh
+      "autoCollectedRaw": coalesce(sum(*[_type == "donationTransaction" && slug == ^.slug.current && status == "Success"].totalAmount), 0),
       "donors": *[_type == "donationTransaction" && slug == ^.slug.current && status == "Success"] | order(_createdAt desc) {
         "name": donorName,
         "amount": totalAmount,
@@ -39,7 +37,7 @@ export async function GET() {
     });
 
     const formattedData = sanityPrograms.map((program: any) => {
-      // Menggunakan hasil penjumlahan otomatis dari query di atas
+      // Menggunakan nominal otomatis dari query transaksi success yang aman
       const rawAmount = Number(program.autoCollectedRaw || 0);
       const targetAmount = Number(program.targetAmount || 100000000);
 
