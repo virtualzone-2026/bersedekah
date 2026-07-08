@@ -8,7 +8,7 @@ const client = createClient({
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   useCdn: false,
   apiVersion: '2024-01-01',
-  token: process.env.SANITY_WRITE_TOKEN, // ➔ Menggunakan Token Editor dari env Anda
+  token: process.env.SANITY_WRITE_TOKEN, // Menggunakan Token Editor dari env Anda
 });
 
 export async function POST(request: Request) {
@@ -30,18 +30,36 @@ export async function POST(request: Request) {
     }
 
     const uniqueCode = Math.floor(Math.random() * 900) + 100;
-
     const baseAmount = Math.floor(cleanAmountNumber / 1000) * 1000;
     const totalAmount = baseAmount + uniqueCode;
 
-    const cleanSlug = String(slug).toUpperCase();
-    const prefix = cleanSlug.includes('BERAS') ? 'BERAS' : cleanSlug.includes('MUALAF') ? 'MUALAF' : 'SUBUH';
-    const generatedOrderId = `INV-${prefix}-${Date.now()}`;
+    // ===================================================================
+    // 🚀 FULLY DYNAMIC PREFIX AUTOMATION (ANTI-POTONG TEKS SEMBARANGAN)
+    // ===================================================================
+    // Ambil kata kunci utama dari slug program tanpa merusak maknanya.
+    // Contoh slug: "infaq-syiar-dakwah" -> kata utama diambil dari bagian tengah/akhir yang unik
+    const slugParts = slug.split('-');
+    let keyword = slugParts[1] || slugParts[0] || 'DONASI';
+    
+    // Jika kata utamanya terlalu pendek (misal 'infaq'), ambil kombinasi kata berikutnya
+    if (keyword.toLowerCase() === 'infaq' && slugParts[1]) {
+      keyword = slugParts[1];
+    }
 
-    // Menulis data ke Sanity
-    await client.create({
+    const prefix = String(keyword).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const timestamp = Date.now();
+    const generatedOrderId = `INV-${prefix}-${timestamp}`;
+
+    // ===================================================================
+    // 🚀 WRITING TO SANITY WITH FIXED DOCUMENT ID STRUCTURING
+    // ===================================================================
+    // Sanity membutuhkan _id yang sinkron agar dokumen bisa tampil di preview list Studio.
+    // Kita buat data transaksinya dengan mendefinisikan _id yang unik dan valid.
+    const transactionData = {
       _type: 'donationTransaction',
+      _id: `drafts.transaction-${prefix}-${timestamp}`, // Dipaksa masuk ke status draft/live agar langsung tertangkap Desk Studio
       orderId: String(generatedOrderId),
+      title: String(generatedOrderId), // 🚀 SAKTI: Menambahkan field title agar di-render otomatis oleh Studio preview!
       donorName: String(donorName),
       donorPhone: String(donorPhone),
       amount: Number(baseAmount),         
@@ -49,13 +67,17 @@ export async function POST(request: Request) {
       totalAmount: Number(totalAmount),   
       status: 'pending',
       slug: String(slug),
-    });
+    };
 
-    console.log(`🔒 TRANSAKSI SELESAI DIKUNCI: ${generatedOrderId} | Total: Rp ${totalAmount}`);
+    // Tulis dokumen baru ke Sanity Studio menggunakan metode createOrReplace agar ID-nya paten
+    await client.createOrReplace(transactionData);
+
+    console.log(`🔒 TRANSAKSI OTOMATIS BERHASIL DIKUNCI: ${generatedOrderId} | Total: Rp ${totalAmount}`);
 
     return NextResponse.json({
       success: true,
       orderId: generatedOrderId,
+      totalAmount: totalAmount,
     });
 
   } catch (error: any) {
