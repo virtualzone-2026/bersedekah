@@ -14,32 +14,52 @@ const sanityClient = createClient({
 
 export async function GET() {
   try {
-    // 🚀 FIXED: Menggunakan coalesce() agar jika sum mengembalikan null, otomatis diubah menjadi angka 0 murni!
-    const query = `*[_type == "program"] | order(_createdAt desc) {
+    // 🚀 LANGKAH 1: Ambil data program dan semua transaksi sukses secara terpisah (Mencegah Query Macet)
+    const programsQuery = `*[_type == "program"] | order(_createdAt desc) {
       "id": _id,
       "slug": slug.current,
       title,
       category,
       "image": image.asset->url,
       targetAmount,
-      description,
-      "autoCollectedRaw": coalesce(sum(*[_type == "donationTransaction" && slug == ^.slug.current && status == "Success"].totalAmount), 0),
-      "donors": *[_type == "donationTransaction" && slug == ^.slug.current && status == "Success"] | order(_createdAt desc) {
-        "name": donorName,
-        "amount": totalAmount,
-        "date": _createdAt
-      }
+      description
     }`;
 
-    const sanityPrograms = await sanityClient.fetch(query, {}, {
-      cache: 'no-store',
-      next: { revalidate: 0 }
-    });
+    const transactionsQuery = `*[_type == "donationTransaction" && status == "Success"] {
+      slug,
+      totalAmount,
+      donorName,
+      _createdAt
+    }`;
 
+    // Jalankan kedua query secara paralel agar cepat
+    const [sanityPrograms, allSuccessTransactions] = await Promise.all([
+      sanityClient.fetch(programsQuery, {}, { cache: 'no-store', next: { revalidate: 0 } }),
+      sanityClient.fetch(transactionsQuery, {}, { cache: 'no-store', next: { revalidate: 0 } })
+    ]);
+
+    // 🚀 LANGKAH 2: Hitung nominal dan petakan data menggunakan JavaScript murni (100% AMAN & ANTI-NULL)
     const formattedData = sanityPrograms.map((program: any) => {
-      // Menggunakan nominal otomatis dari query transaksi success yang aman
-      const rawAmount = Number(program.autoCollectedRaw || 0);
+      
+      // Filter transaksi sukses yang sesuai dengan slug program ini
+      const matchingTransactions = allSuccessTransactions.filter(
+        (tx: any) => tx.slug === program.slug
+      );
+
+      // Hitung total nominal donasi secara otomatis lewat fungsi reduce JavaScript
+      const autoCollectedRaw = matchingTransactions.reduce(
+        (sum: number, tx: any) => sum + Number(tx.totalAmount || 0), 
+        0
+      );
+
       const targetAmount = Number(program.targetAmount || 100000000);
+
+      // Format daftar donatur untuk kebutuhan halaman detail
+      const donors = matchingTransactions.map((tx: any) => ({
+        name: tx.donorName,
+        amount: tx.totalAmount,
+        date: tx._createdAt
+      }));
 
       return {
         id: program.id,
@@ -47,12 +67,12 @@ export async function GET() {
         title: program.title,
         category: program.category || 'PENDIDIKAN',
         image: program.image || 'https://via.placeholder.com/385x176?text=No+Image',
-        collected: `Rp ${rawAmount.toLocaleString('id-ID')}`,
-        collectedRaw: rawAmount,
+        collected: `Rp ${autoCollectedRaw.toLocaleString('id-ID')}`,
+        collectedRaw: autoCollectedRaw,
         target: `Rp ${targetAmount.toLocaleString('id-ID')}`,
         targetAmount: targetAmount,
         description: program.description || null,
-        donors: program.donors || []
+        donors: donors
       };
     });
 
