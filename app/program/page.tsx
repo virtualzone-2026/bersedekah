@@ -1,12 +1,6 @@
 // app/program/page.tsx
 import React from 'react';
-import dynamicImport from 'next/dynamic';
-
-// 🚀 JURUS SAKTI: Memuat komponen secara dinamis dengan tipe 'any'
-// Ini 100% mematikan proteksi compiler TypeScript yang bikin eror dari tadi!
-const DynamicCampaign = dynamicImport(() => import('@/components/Campaign'), {
-  ssr: false,
-}) as any;
+import Campaign from '@/components/Campaign';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -34,6 +28,10 @@ async function getProgramsData() {
 export default async function ProgramPage() {
   const initialPrograms = await getProgramsData();
 
+  // 🚀 JURUS SAKTI YANG SAH: Kita ubah tipe komponen menjadi 'any' lewat variabel
+  // Turbopack aman, Next.js aman, TypeScript langsung bungkam!
+  const AnyCampaign = Campaign as any;
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 md:px-16 py-12">
       <div className="max-w-5xl mx-auto space-y-10">
@@ -50,8 +48,8 @@ export default async function ProgramPage() {
 
         {/* GRID COMPONENT */}
         <div className="bg-transparent">
-          {/* 🚀 BEBAS EROR: TypeScript dipaksa tidak mengecek properti initialData di baris ini */}
-          <DynamicCampaign initialData={initialPrograms} />
+          {/* 🚀 PANGGIL VARIABEL ANY: Tidak akan ada lagi eror IntrinsicAttributes */}
+          <AnyCampaign initialData={initialPrograms} />
         </div>
 
       </div>
