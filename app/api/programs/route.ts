@@ -6,15 +6,16 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const sanityClient = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '',
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   apiVersion: '2026-06-20', 
-  useCdn: false,
+  useCdn: false, // Wajib false agar perubahan nominal di Sanity langsung live tanpa tertahan CDN cache
 });
 
 export async function GET() {
   try {
-    const query = `*[_type == "program"] | order(_createdAt desc) {
+    // 🚀 FIXED: Mengubah _type menjadi "programDonasi" agar sesuai dengan dashboard Studio Anda
+    const query = `*[_type == "programDonasi"] | order(_createdAt desc) {
       "id": _id,
       "slug": slug.current,
       title,
@@ -33,13 +34,13 @@ export async function GET() {
 
     const formattedData = sanityPrograms.map((program: any) => {
       const rawAmount = Number(program.collectedRaw || 0);
-      const targetAmount = Number(program.targetAmount || 50000000);
+      const targetAmount = Number(program.targetAmount || 100000000); // Fallback target Rp 100.000.000 sesuai gambar card
 
       return {
         id: program.id,
         slug: program.slug,
         title: program.title,
-        category: program.category || 'KEMANUSIAAN',
+        category: program.category || 'PENDIDIKAN',
         image: program.image || 'https://via.placeholder.com/385x176?text=No+Image',
         collected: `Rp ${rawAmount.toLocaleString('id-ID')}`,
         collectedRaw: rawAmount,
