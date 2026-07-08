@@ -71,14 +71,16 @@ export default function CampaignDetailPage() {
 
       const json = await res.json();
       
-      // 🚀 FIXED INTEGRATION LOGIC: Dialihkan langsung secara valid ke link invoice QRIS resmi Pakasir
-      if (json.success && json.paymentUrl) {
-        window.location.href = json.paymentUrl;
+      // ===================================================================
+      // 🚀 FIXED: BYPASS PAKASIR ➔ REDIRECT LANGSUNG KE QRIS INTERNAL YAYASAN
+      // ===================================================================
+      if (json.success && json.orderId) {
+        window.location.href = `/pay-qris/${json.orderId}`;
       } else {
-        alert(json.error || 'Gagal memproses link pembayaran dari Pakasir.');
+        alert(json.error || 'Gagal memproses data transaksi infak Anda.');
       }
     } catch (err) {
-      alert('Terjadi kesalahan koneksi saat menghubungi server pembayaran.');
+      alert('Terjadi kesalahan koneksi saat menghubungi server pemrosesan donasi.');
     } finally {
       setSubmitting(false);
     }
@@ -149,7 +151,6 @@ export default function CampaignDetailPage() {
             ) : (
               <div className="space-y-3 py-2">
                 {donorList.length > 0 ? (
-                  // Balik urutan list agar donatur terbaru muncul paling atas (descending UI)
                   [...donorList].reverse().map((donor: any, idx: number) => (
                     <div key={idx} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex items-center justify-between">
                       <div className="flex items-center space-x-3">

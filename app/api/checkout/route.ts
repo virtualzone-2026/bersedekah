@@ -36,12 +36,9 @@ export async function POST(request: Request) {
     // ===================================================================
     // 🚀 FULLY DYNAMIC PREFIX AUTOMATION (ANTI-POTONG TEKS SEMBARANGAN)
     // ===================================================================
-    // Ambil kata kunci utama dari slug program tanpa merusak maknanya.
-    // Contoh slug: "infaq-syiar-dakwah" -> kata utama diambil dari bagian tengah/akhir yang unik
     const slugParts = slug.split('-');
     let keyword = slugParts[1] || slugParts[0] || 'DONASI';
     
-    // Jika kata utamanya terlalu pendek (misal 'infaq'), ambil kombinasi kata berikutnya
     if (keyword.toLowerCase() === 'infaq' && slugParts[1]) {
       keyword = slugParts[1];
     }
@@ -51,15 +48,14 @@ export async function POST(request: Request) {
     const generatedOrderId = `INV-${prefix}-${timestamp}`;
 
     // ===================================================================
-    // 🚀 WRITING TO SANITY WITH FIXED DOCUMENT ID STRUCTURING
+    // 🚀 WRITING TO SANITY (CLEAN FROM UNKNOWN SCHEMA WARNINGS)
     // ===================================================================
-    // Sanity membutuhkan _id yang sinkron agar dokumen bisa tampil di preview list Studio.
-    // Kita buat data transaksinya dengan mendefinisikan _id yang unik dan valid.
+    // Menghapus field 'title' agar tidak memicu warning kuning di Studio,
+    // dokumen tetap muncul rapi karena diidentifikasi lewat dokumen ID khusus drafts.
     const transactionData = {
       _type: 'donationTransaction',
-      _id: `drafts.transaction-${prefix}-${timestamp}`, // Dipaksa masuk ke status draft/live agar langsung tertangkap Desk Studio
+      _id: `drafts.transaction-${prefix}-${timestamp}`, 
       orderId: String(generatedOrderId),
-      title: String(generatedOrderId), // 🚀 SAKTI: Menambahkan field title agar di-render otomatis oleh Studio preview!
       donorName: String(donorName),
       donorPhone: String(donorPhone),
       amount: Number(baseAmount),         
@@ -69,7 +65,7 @@ export async function POST(request: Request) {
       slug: String(slug),
     };
 
-    // Tulis dokumen baru ke Sanity Studio menggunakan metode createOrReplace agar ID-nya paten
+    // Tulis atau timpa dokumen baru langsung ke database Sanity
     await client.createOrReplace(transactionData);
 
     console.log(`🔒 TRANSAKSI OTOMATIS BERHASIL DIKUNCI: ${generatedOrderId} | Total: Rp ${totalAmount}`);
