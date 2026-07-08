@@ -9,22 +9,28 @@ const sanityClient = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   apiVersion: '2026-06-20', 
-  useCdn: false, // Wajib false agar perubahan nominal di Sanity langsung live tanpa tertahan CDN cache
+  useCdn: false, // Wajib false agar saat status diubah admin, angka depan langsung berubah seketika
 });
 
 export async function GET() {
   try {
-    // 🚀 FIXED: Mengubah _type menjadi "programDonasi" agar sesuai dengan dashboard Studio Anda
-    const query = `*[_type == "programDonasi"] | order(_createdAt desc) {
+    // 🚀 SAKTI: Query GROQ ini otomatis menghitung (sum) totalAmount dari transaksi yang berstatus "Success"
+    const query = `*[_type == "program"] | order(_createdAt desc) {
       "id": _id,
       "slug": slug.current,
       title,
       category,
       "image": image.asset->url,
-      collectedRaw,
       targetAmount,
       description,
-      donors
+      // Menghitung otomatis total uang dari transaksi yang sukses secara real-time
+      "autoCollectedRaw": sum(*[_type == "donationTransaction" && slug == ^.slug.current && status == "Success"].totalAmount),
+      // Mengambil daftar nama donatur yang sukses untuk ditampilkan di halaman detail jika butuh
+      "donors": *[_type == "donationTransaction" && slug == ^.slug.current && status == "Success"] | order(_createdAt desc) {
+        "name": donorName,
+        "amount": totalAmount,
+        "date": _createdAt
+      }
     }`;
 
     const sanityPrograms = await sanityClient.fetch(query, {}, {
@@ -33,8 +39,9 @@ export async function GET() {
     });
 
     const formattedData = sanityPrograms.map((program: any) => {
-      const rawAmount = Number(program.collectedRaw || 0);
-      const targetAmount = Number(program.targetAmount || 100000000); // Fallback target Rp 100.000.000 sesuai gambar card
+      // Menggunakan hasil penjumlahan otomatis dari query di atas
+      const rawAmount = Number(program.autoCollectedRaw || 0);
+      const targetAmount = Number(program.targetAmount || 100000000);
 
       return {
         id: program.id,
