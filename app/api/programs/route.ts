@@ -14,7 +14,7 @@ const sanityClient = createClient({
 
 export async function GET() {
   try {
-    // 🚀 LANGKAH 1: Ambil data program dan semua transaksi sukses secara terpisah (Mencegah Query Macet)
+    // 1. Ambil data program murni
     const programsQuery = `*[_type == "program"] | order(_createdAt desc) {
       "id": _id,
       "slug": slug.current,
@@ -25,28 +25,30 @@ export async function GET() {
       description
     }`;
 
-    const transactionsQuery = `*[_type == "donationTransaction" && status == "Success"] {
+    // 2. Ambil semua transaksi yang statusnya mengandung kata success/Success/SUCCESS
+    const transactionsQuery = `*[_type == "donationTransaction" && (status == "Success" || status == "success" || status == "SUCCESS")] {
       slug,
       totalAmount,
       donorName,
+      status,
       _createdAt
     }`;
 
-    // Jalankan kedua query secara paralel agar cepat
     const [sanityPrograms, allSuccessTransactions] = await Promise.all([
       sanityClient.fetch(programsQuery, {}, { cache: 'no-store', next: { revalidate: 0 } }),
       sanityClient.fetch(transactionsQuery, {}, { cache: 'no-store', next: { revalidate: 0 } })
     ]);
 
-    // 🚀 LANGKAH 2: Hitung nominal dan petakan data menggunakan JavaScript murni (100% AMAN & ANTI-NULL)
     const formattedData = sanityPrograms.map((program: any) => {
+      const currentProgramSlug = String(program.slug || '').trim().toLowerCase();
       
-      // Filter transaksi sukses yang sesuai dengan slug program ini
-      const matchingTransactions = allSuccessTransactions.filter(
-        (tx: any) => tx.slug === program.slug
-      );
+      // 🚀 AMAN: Kita bersihkan string slug dan status sebelum dicocokkan agar tidak ada kendala typo huruf besar/kecil
+      const matchingTransactions = allSuccessTransactions.filter((tx: any) => {
+        const txSlug = String(tx.slug || '').trim().toLowerCase();
+        return txSlug === currentProgramSlug;
+      });
 
-      // Hitung total nominal donasi secara otomatis lewat fungsi reduce JavaScript
+      // Hitung total nominal
       const autoCollectedRaw = matchingTransactions.reduce(
         (sum: number, tx: any) => sum + Number(tx.totalAmount || 0), 
         0
@@ -54,7 +56,6 @@ export async function GET() {
 
       const targetAmount = Number(program.targetAmount || 100000000);
 
-      // Format daftar donatur untuk kebutuhan halaman detail
       const donors = matchingTransactions.map((tx: any) => ({
         name: tx.donorName,
         amount: tx.totalAmount,
