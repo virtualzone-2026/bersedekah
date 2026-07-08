@@ -48,13 +48,13 @@ export async function POST(request: Request) {
     const generatedOrderId = `INV-${prefix}-${timestamp}`;
 
     // ===================================================================
-    // 🚀 WRITING TO SANITY (CLEAN FROM UNKNOWN SCHEMA WARNINGS)
+    // 🚀 WRITING TO SANITY (CLEAN & DIRECTLY LIVE FOR PAY-QRIS QUERY)
     // ===================================================================
-    // Menghapus field 'title' agar tidak memicu warning kuning di Studio,
-    // dokumen tetap muncul rapi karena diidentifikasi lewat dokumen ID khusus drafts.
+    // FIXED: Mengubah _id menjadi ID dokumen live (tanpa drafts.) agar halaman front-end
+    // /pay-qris/[id] bisa langsung meng-query detail transaksi secara instan.
     const transactionData = {
       _type: 'donationTransaction',
-      _id: `drafts.transaction-${prefix}-${timestamp}`, 
+      _id: `transaction-${prefix}-${timestamp}`, 
       orderId: String(generatedOrderId),
       donorName: String(donorName),
       donorPhone: String(donorPhone),
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       slug: String(slug),
     };
 
-    // Tulis atau timpa dokumen baru langsung ke database Sanity
+    // Tulis dokumen baru langsung ke database Sanity sebagai dokumen Published
     await client.createOrReplace(transactionData);
 
     console.log(`🔒 TRANSAKSI OTOMATIS BERHASIL DIKUNCI: ${generatedOrderId} | Total: Rp ${totalAmount}`);
