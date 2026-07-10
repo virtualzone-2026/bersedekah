@@ -54,16 +54,16 @@ export default function Footer() {
             <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4">Kategori</h3>
             <ul className="space-y-2 text-xs font-semibold text-gray-400">
               <li>
-                <Link href="/program?category=kemanusiaan" className="hover:text-emerald-600 transition-colors">Kemanusiaan</Link>
+                <Link href="/program" className="hover:text-emerald-600 transition-colors">Program Donasi</Link>
               </li>
               <li>
-                <Link href="/program?category=pendidikan" className="hover:text-emerald-600 transition-colors">Pendidikan</Link>
+                <Link href="/blog" className="hover:text-emerald-600 transition-colors">Berita dan Artikel</Link>
               </li>
               <li>
-                <Link href="/program?category=pembangunan" className="hover:text-emerald-600 transition-colors">Wakaf Qur'an</Link>
+                <Link href="https://onislam.web.id" className="hover:text-emerald-600 transition-colors">Media Islam</Link>
               </li>
               <li>
-                <Link href="/program?category=bencana" className="hover:text-emerald-600 transition-colors">Tanggap Bencana</Link>
+                <Link href="https://guruonline.web.id" className="hover:text-emerald-600 transition-colors">Guru Online</Link>
               </li>
             </ul>
           </div>
