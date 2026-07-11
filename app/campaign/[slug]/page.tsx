@@ -1,311 +1,83 @@
-'use client';
+// app/campaign/[slug]/page.tsx
+import React from 'react';
+import { Metadata } from 'next';
+import { createClient } from 'next-sanity';
+import CampaignDetailClient from './CampaignDetailClient';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
-import { PortableText } from '@portabletext/react';
+const sanityClient = createClient({
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
+  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
+  apiVersion: '2026-06-20',
+  useCdn: false,
+});
 
-export default function CampaignDetailPage() {
-  const { slug } = useParams();
-  const [program, setProgram] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [amount, setAmount] = useState('');
-  const [donorName, setDonorName] = useState('');
-  const [donorPhone, setDonorPhone] = useState(''); 
-  const [submitting, setSubmitting] = useState(false);
-  
-  const [activeTab, setActiveTab] = useState<'cerita' | 'donatur'>('cerita');
+// 🚀 FUNGSI SAKTI SEO: Dieksekusi otomatis oleh server saat link dibaca WhatsApp / Medsos
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const { slug } = params;
 
-  // State untuk melacak apakah formulir donasi sedang terlihat di layar mobile
-  const [isFormVisible, setIsFormVisible] = useState(false);
+  try {
+    const query = `*[_type == "program" && slug.current == $slug][0] {
+      title,
+      description,
+      "imageUrl": image.asset->url
+    }`;
 
-  // Ref untuk mendeteksi elemen formulir donasi
-  const formRef = useRef<HTMLDivElement>(null);
+    const program = await sanityClient.fetch(query, { slug });
 
-  useEffect(() => {
-    fetch('/api/programs?v=' + Date.now(), {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      }
-    })
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success) {
-          const found = json.data.find((p: any) => p.slug === slug);
-          setProgram(found);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Fetch detail campaign error:', err);
-        setLoading(false);
-      });
-  }, [slug]);
+    if (!program) {
+      return { title: 'Program Tidak Ditemukan - Indonesia Mengaji' };
+    }
 
-  // 🚀 INTERSECTION OBSERVER: Menyembunyikan floating button secara otomatis
-  useEffect(() => {
-    const currentFormRef = formRef.current;
-    if (!currentFormRef) return;
+    // Ekstrak string deskripsi bersih jika tipenya objek PortableText
+    const textDesc = typeof program.description === 'string' 
+      ? program.description 
+      : 'Salurkan infak terbaik Anda melalui program galang dana resmi Yayasan Indonesia Mengaji.';
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // Jika form donasi terlihat minimal 10% di layar, set true
-        setIsFormVisible(entry.isIntersecting);
+    return {
+      title: `${program.title} - Indonesia Mengaji`,
+      description: textDesc.slice(0, 160),
+      openGraph: {
+        title: program.title,
+        description: textDesc.slice(0, 160),
+        url: `https://www.indonesiamengaji.net/campaign/${slug}`,
+        siteName: 'Indonesia Mengaji',
+        images: [
+          {
+            url: program.imageUrl || 'https://www.indonesiamengaji.net/og-default.png',
+            width: 1200,
+            height: 630,
+            alt: program.title,
+          },
+        ],
+        type: 'article',
       },
-      {
-        root: null, // Menggunakan viewport browser
-        threshold: 0.1, // Memicu perubahan saat 10% elemen terlihat
-      }
-    );
-
-    observer.observe(currentFormRef);
-
-    return () => {
-      if (currentFormRef) {
-        observer.unobserve(currentFormRef);
-      }
+      twitter: {
+        card: 'summary_large_image',
+        title: program.title,
+        description: textDesc.slice(0, 160),
+        images: [program.imageUrl || 'https://www.indonesiamengaji.net/og-default.png'],
+      },
     };
-  }, [loading, program]); // Berjalan ulang setelah data selesai dimuat
+  } catch (error) {
+    return { title: 'Indonesia Mengaji - Budayakan Mengaji Wujudkan Generasi Qur\'an' };
+  }
+}
 
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/[^0-9]/g, '');
-    if (!rawValue) {
-      setAmount('');
-      return;
-    }
-    const formatted = Number(rawValue).toLocaleString('id-ID');
-    setAmount(formatted);
-  };
+export default async function Page({ params }: { params: { slug: string } }) {
+  const { slug } = params;
 
-  const handleDonate = async () => {
-    const cleanAmount = amount.replace(/\./g, '');
+  // Ambil data awal sekali dari server untuk mencegah layout berkedip saat dimuat
+  const query = `*[_type == "program" && slug.current == $slug][0] {
+    "id": _id,
+    "slug": slug.current,
+    title,
+    category,
+    "image": image.asset->url,
+    targetAmount,
+    description
+  }`;
+  
+  const initialProgram = await sanityClient.fetch(query, { slug });
 
-    if (!cleanAmount || Number(cleanAmount) < 10000) {
-      alert('Masukkan nominal donasi minimal Rp 10.000 gaes!');
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug: program.slug,
-          amount: cleanAmount,
-          donorName: donorName.trim() || 'Hamba Allah',
-          donorPhone: donorPhone.trim(), 
-        }),
-      });
-
-      const json = await res.json();
-      
-      if (json.success && json.orderId) {
-        window.location.href = `/pay-qris/${json.orderId}`;
-      } else {
-        alert(json.error || 'Gagal memproses data transaksi infak Anda.');
-      }
-    } catch (err) {
-      alert('Terjadi kesalahan koneksi saat menghubungi server pemrosesan donasi.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const scrollToForm = () => {
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  };
-
-  if (loading) return <div className="text-center py-20 text-gray-500 font-medium">Memuat detail program...</div>;
-  if (!program) return <div className="text-center py-20 text-red-500 font-medium">Program tidak ditemukan.</div>;
-
-  const rawTarget = program.targetAmount || 50000000;
-  const percentage = Math.min(Math.round((program.collectedRaw / rawTarget) * 100), 100);
-  const donorList = program.donors || [];
-  const displayCollected = program.collected || `Rp ${Number(program.collectedRaw).toLocaleString('id-ID')}`;
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-16 pb-32 lg:pb-8">
-      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* KOLOM KIRI: DETAIL CERITA & DAFTAR DONATUR */}
-        <div className="lg:col-span-2 space-y-5 flex flex-col">
-          <div>
-            <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider">
-              {program.category || 'Kebaikan'}
-            </span>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-[#333333] mt-3 leading-tight tracking-tight">
-              {program.title}
-            </h1>
-          </div>
-          
-          <div className="rounded-2xl overflow-hidden bg-gray-100 aspect-[16/9] w-full shadow-sm border border-gray-200/60">
-            <img src={program.image} alt={program.title} className="w-full h-full object-cover" />
-          </div>
-
-          <div className="flex border-b border-gray-200 text-xs font-bold text-gray-400 space-x-6 pt-2">
-            <button 
-              onClick={() => setActiveTab('cerita')}
-              className={`pb-3 transition-all duration-200 focus:outline-none ${
-                activeTab === 'cerita' 
-                  ? 'text-emerald-600 border-b-2 border-emerald-600' 
-                  : 'hover:text-gray-600 border-b-2 border-transparent'
-              }`}
-            >
-              DETAIL CERITA
-            </button>
-            <button 
-              onClick={() => setActiveTab('donatur')}
-              className={`pb-3 transition-all duration-200 focus:outline-none ${
-                activeTab === 'donatur' 
-                  ? 'text-emerald-600 border-b-2 border-emerald-600' 
-                  : 'hover:text-gray-600 border-b-2 border-transparent'
-              }`}
-            >
-              DONATUR ({donorList.length})
-            </button>
-          </div>
-
-          <div className="bg-transparent py-2 w-full">
-            {activeTab === 'cerita' ? (
-              <div className="text-gray-700 text-base leading-relaxed space-y-4 font-normal tracking-wide dynamic-portable-text">
-                {program.description ? (
-                  typeof program.description === 'string' ? (
-                    <p>{program.description}</p>
-                  ) : (
-                    <PortableText value={program.description} />
-                  )
-                ) : (
-                  <p className="text-gray-400 italic text-xs">Belum ada cerita atau narasi detail untuk program kebaikan ini.</p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3 py-2">
-                {donorList.length > 0 ? (
-                  [...donorList].reverse().map((donor: any, idx: number) => (
-                    <div key={idx} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">
-                          {(donor.name || 'H').toUpperCase().slice(0, 1)}
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-gray-700">{donor.name || 'Hamba Allah'}</p>
-                          <p className="text-[10px] text-gray-400 font-medium">{donor.date || 'Baru Saja'}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs font-black text-emerald-600">
-                          +{`Rp ${Number(donor.amount || 0).toLocaleString('id-ID')}`}
-                        </p>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Verified ➔</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-10 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                    <span className="text-3xl block mb-2">🌱</span>
-                    <p className="text-sm font-bold text-gray-600">Belum Ada Donatur</p>
-                    <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
-                      Jadilah orang pertama yang mengalirkan keberkahan untuk program kebaikan ini gaes!
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* KOLOM KANAN: FORMULIR DONASI (STICKY BOX DESKTOP) */}
-        <div ref={formRef} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-fit lg:sticky lg:top-24">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dana Terkumpul</p>
-          <p className="text-3xl font-black text-emerald-600 mt-1">{displayCollected}</p>
-          <p className="text-[11px] text-gray-400 mt-0.5 font-medium">Target Rp {rawTarget.toLocaleString('id-ID')}</p>
-
-          <div className="w-full bg-gray-100 h-2 rounded-full mt-4 overflow-hidden">
-            <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
-          </div>
-          <div className="flex justify-between text-[10px] text-gray-400 font-bold mt-2">
-            <span>TERCAPAI {percentage}%</span>
-            <span>{donorList.length} DONATUR</span>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-gray-100 space-y-4">
-            <div>
-              <label className="text-[11px] font-bold text-gray-500 block mb-1.5">Nama Donatur</label>
-              <input
-                type="text"
-                placeholder="Hamba Allah (Boleh Kosong)"
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-700 focus:outline-emerald-500 font-medium"
-                value={donorName}
-                onChange={(e) => setDonorName(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold text-gray-500 block mb-1.5">Nomor WhatsApp</label>
-              <input
-                type="tel"
-                placeholder="Contoh: 081234567890"
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-700 focus:outline-emerald-500 font-medium"
-                value={donorPhone}
-                onChange={(e) => setDonorPhone(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold text-gray-500 block mb-1.5">Nominal Infak (Rp)</label>
-              <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-xs font-bold text-gray-400">Rp</span>
-                <input
-                  type="text"
-                  placeholder="Minimal 10.000"
-                  className="w-full border border-gray-200 rounded-xl pl-9 pr-3.5 py-2.5 text-xs font-bold text-gray-800 focus:outline-emerald-500"
-                  value={amount}
-                  onChange={handleAmountChange}
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={handleDonate}
-              disabled={submitting}
-              className="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition text-xs uppercase tracking-widest hover:bg-emerald-700 disabled:bg-gray-300 shadow-md shadow-emerald-100"
-            >
-              {submitting ? 'Memproses...' : 'Donasi Sekarang 🚀'}
-            </button>
-          </div>
-        </div>
-
-      </div>
-
-      {/* =================================================================== */}
-      {/* 🚀 FIXED MOBILE: FLOATING BAR STICKY BOTTOM (DYNAMIC SHOW/HIDE) */}
-      {/* =================================================================== */}
-      {!isFormVisible && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 p-4 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] lg:hidden flex flex-col space-y-2 animate-fade-in-up">
-          <div className="flex justify-between items-center px-1">
-            <div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Terkumpul</p>
-              <p className="text-base font-black text-emerald-600">{displayCollected}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Target</p>
-              <p className="text-[11px] font-bold text-gray-700">Rp {rawTarget.toLocaleString('id-ID')}</p>
-            </div>
-          </div>
-          
-          {/* FIXED: Menggunakan rounded-none sesuai request agar siku-siku tajam */}
-          <button
-            onClick={scrollToForm}
-            className="w-full bg-red-600 text-white font-bold py-4 rounded-none text-xs uppercase tracking-widest hover:bg-red-700 active:bg-red-800 transition duration-150 shadow-md shadow-red-100 text-center focus:outline-none"
-          >
-            Donasi Sekarang 🚀
-          </button>
-        </div>
-      )}
-
-    </div>
-  );
+  return <CampaignDetailClient slug={slug} initialProgram={initialProgram} />;
 }
