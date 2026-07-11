@@ -11,11 +11,12 @@ const sanityClient = createClient({
   useCdn: false,
 });
 
-// 🚀 FUNGSI SAKTI SEO: Dieksekusi otomatis oleh server saat link dibaca WhatsApp / Medsos
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const { slug } = params;
-
+// 🚀 FIXED: Menambahkan await pada params untuk standard Next.js dynamic routing
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> | { slug: string } }): Promise<Metadata> {
   try {
+    const resolvedParams = await params;
+    const slug = resolvedParams.slug;
+
     const query = `*[_type == "program" && slug.current == $slug][0] {
       title,
       description,
@@ -28,7 +29,6 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       return { title: 'Program Tidak Ditemukan - Indonesia Mengaji' };
     }
 
-    // Ekstrak string deskripsi bersih jika tipenya objek PortableText
     const textDesc = typeof program.description === 'string' 
       ? program.description 
       : 'Salurkan infak terbaik Anda melalui program galang dana resmi Yayasan Indonesia Mengaji.';
@@ -63,10 +63,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 }
 
-export default async function Page({ params }: { params: { slug: string } }) {
-  const { slug } = params;
+// 🚀 FIXED: Menambahkan await pada params di main component
+export default async function Page({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
+  const resolvedParams = await params;
+  const slug = resolvedParams.slug;
 
-  // Ambil data awal sekali dari server untuk mencegah layout berkedip saat dimuat
   const query = `*[_type == "program" && slug.current == $slug][0] {
     "id": _id,
     "slug": slug.current,
