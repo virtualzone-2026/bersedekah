@@ -15,7 +15,10 @@ export default function CampaignDetailPage() {
   
   const [activeTab, setActiveTab] = useState<'cerita' | 'donatur'>('cerita');
 
-  // Ref untuk mengarahkan scroll otomatis ke formulir donasi saat tombol mobile diklik
+  // State untuk melacak apakah formulir donasi sedang terlihat di layar mobile
+  const [isFormVisible, setIsFormVisible] = useState(false);
+
+  // Ref untuk mendeteksi elemen formulir donasi
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,6 +42,31 @@ export default function CampaignDetailPage() {
         setLoading(false);
       });
   }, [slug]);
+
+  // 🚀 INTERSECTION OBSERVER: Menyembunyikan floating button secara otomatis
+  useEffect(() => {
+    const currentFormRef = formRef.current;
+    if (!currentFormRef) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Jika form donasi terlihat minimal 10% di layar, set true
+        setIsFormVisible(entry.isIntersecting);
+      },
+      {
+        root: null, // Menggunakan viewport browser
+        threshold: 0.1, // Memicu perubahan saat 10% elemen terlihat
+      }
+    );
+
+    observer.observe(currentFormRef);
+
+    return () => {
+      if (currentFormRef) {
+        observer.unobserve(currentFormRef);
+      }
+    };
+  }, [loading, program]); // Berjalan ulang setelah data selesai dimuat
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/[^0-9]/g, '');
@@ -253,28 +281,30 @@ export default function CampaignDetailPage() {
       </div>
 
       {/* =================================================================== */}
-      {/* 🚀 FIXED MOBILE: FLOATING BAR STICKY BOTTOM (RED BRANDING) */}
+      {/* 🚀 FIXED MOBILE: FLOATING BAR STICKY BOTTOM (DYNAMIC SHOW/HIDE) */}
       {/* =================================================================== */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 p-4 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] lg:hidden flex flex-col space-y-2">
-        <div className="flex justify-between items-center px-1">
-          <div>
-            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Terkumpul</p>
-            <p className="text-base font-black text-emerald-600">{displayCollected}</p>
+      {!isFormVisible && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 p-4 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] lg:hidden flex flex-col space-y-2 animate-fade-in-up">
+          <div className="flex justify-between items-center px-1">
+            <div>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Terkumpul</p>
+              <p className="text-base font-black text-emerald-600">{displayCollected}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Target</p>
+              <p className="text-[11px] font-bold text-gray-700">Rp {rawTarget.toLocaleString('id-ID')}</p>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Target</p>
-            <p className="text-[11px] font-bold text-gray-700">Rp {rawTarget.toLocaleString('id-ID')}</p>
-          </div>
+          
+          {/* FIXED: Menggunakan rounded-none sesuai request agar siku-siku tajam */}
+          <button
+            onClick={scrollToForm}
+            className="w-full bg-red-600 text-white font-bold py-4 rounded-none text-xs uppercase tracking-widest hover:bg-red-700 active:bg-red-800 transition duration-150 shadow-md shadow-red-100 text-center focus:outline-none"
+          >
+            Donasi Sekarang 🚀
+          </button>
         </div>
-        
-        {/* FIXED: Mengubah class bg-emerald-600 menjadi bg-red-600 untuk CTA kontras tinggi */}
-        <button
-          onClick={scrollToForm}
-          className="w-full bg-red-600 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest hover:bg-red-700 active:bg-red-800 transition duration-150 shadow-md shadow-red-100 text-center focus:outline-none"
-        >
-          Donasi Sekarang 🚀
-        </button>
-      </div>
+      )}
 
     </div>
   );
