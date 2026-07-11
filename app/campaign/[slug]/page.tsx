@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { PortableText } from '@portabletext/react';
 
@@ -14,6 +14,9 @@ export default function CampaignDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'cerita' | 'donatur'>('cerita');
+
+  // Ref untuk mengarahkan scroll otomatis ke formulir donasi saat tombol mobile diklik
+  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/programs?v=' + Date.now(), {
@@ -71,9 +74,6 @@ export default function CampaignDetailPage() {
 
       const json = await res.json();
       
-      // ===================================================================
-      // 🚀 FIXED: BYPASS PAKASIR ➔ REDIRECT LANGSUNG KE QRIS INTERNAL YAYASAN
-      // ===================================================================
       if (json.success && json.orderId) {
         window.location.href = `/pay-qris/${json.orderId}`;
       } else {
@@ -86,15 +86,20 @@ export default function CampaignDetailPage() {
     }
   };
 
+  const scrollToForm = () => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   if (loading) return <div className="text-center py-20 text-gray-500 font-medium">Memuat detail program...</div>;
   if (!program) return <div className="text-center py-20 text-red-500 font-medium">Program tidak ditemukan.</div>;
 
   const rawTarget = program.targetAmount || 50000000;
   const percentage = Math.min(Math.round((program.collectedRaw / rawTarget) * 100), 100);
   const donorList = program.donors || [];
+  const displayCollected = program.collected || `Rp ${Number(program.collectedRaw).toLocaleString('id-ID')}`;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-16">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-16 pb-32 lg:pb-8">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* KOLOM KIRI: DETAIL CERITA & DAFTAR DONATUR */}
@@ -184,10 +189,10 @@ export default function CampaignDetailPage() {
           </div>
         </div>
 
-        {/* KOLOM KANAN: FORMULIR DONASI (STICKY BOX) */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-fit lg:sticky lg:top-24">
+        {/* KOLOM KANAN: FORMULIR DONASI (STICKY BOX DESKTOP) */}
+        <div ref={formRef} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-fit lg:sticky lg:top-24">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Dana Terkumpul</p>
-          <p className="text-3xl font-black text-emerald-600 mt-1">{program.collected || `Rp ${Number(program.collectedRaw).toLocaleString('id-ID')}`}</p>
+          <p className="text-3xl font-black text-emerald-600 mt-1">{displayCollected}</p>
           <p className="text-[11px] text-gray-400 mt-0.5 font-medium">Target Rp {rawTarget.toLocaleString('id-ID')}</p>
 
           <div className="w-full bg-gray-100 h-2 rounded-full mt-4 overflow-hidden">
@@ -246,6 +251,31 @@ export default function CampaignDetailPage() {
         </div>
 
       </div>
+
+      {/* =================================================================== */}
+      {/* 🚀 FIXED MOBILE: FLOATING BAR STICKY BOTTOM (RED BRANDING) */}
+      {/* =================================================================== */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 p-4 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] lg:hidden flex flex-col space-y-2">
+        <div className="flex justify-between items-center px-1">
+          <div>
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Terkumpul</p>
+            <p className="text-base font-black text-emerald-600">{displayCollected}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Target</p>
+            <p className="text-[11px] font-bold text-gray-700">Rp {rawTarget.toLocaleString('id-ID')}</p>
+          </div>
+        </div>
+        
+        {/* FIXED: Mengubah class bg-emerald-600 menjadi bg-red-600 untuk CTA kontras tinggi */}
+        <button
+          onClick={scrollToForm}
+          className="w-full bg-red-600 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-widest hover:bg-red-700 active:bg-red-800 transition duration-150 shadow-md shadow-red-100 text-center focus:outline-none"
+        >
+          Donasi Sekarang 🚀
+        </button>
+      </div>
+
     </div>
   );
 }
