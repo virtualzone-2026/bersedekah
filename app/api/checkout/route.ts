@@ -2,13 +2,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@sanity/client';
 
-// 🚀 MEMBACA KREDENSIAL LANGSUNG DARI FILE .ENV.LOCAL ANDA SECARA VALID
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   useCdn: false,
   apiVersion: '2024-01-01',
-  token: process.env.SANITY_WRITE_TOKEN, // Menggunakan Token Editor dari env Anda
+  token: process.env.SANITY_WRITE_TOKEN, 
 });
 
 export async function POST(request: Request) {
@@ -33,9 +32,6 @@ export async function POST(request: Request) {
     const baseAmount = Math.floor(cleanAmountNumber / 1000) * 1000;
     const totalAmount = baseAmount + uniqueCode;
 
-    // ===================================================================
-    // 🚀 FULLY DYNAMIC PREFIX AUTOMATION (ANTI-POTONG TEKS SEMBARANGAN)
-    // ===================================================================
     const slugParts = slug.split('-');
     let keyword = slugParts[1] || slugParts[0] || 'DONASI';
     
@@ -47,11 +43,6 @@ export async function POST(request: Request) {
     const timestamp = Date.now();
     const generatedOrderId = `INV-${prefix}-${timestamp}`;
 
-    // ===================================================================
-    // 🚀 WRITING TO SANITY (CLEAN & DIRECTLY LIVE FOR PAY-QRIS QUERY)
-    // ===================================================================
-    // FIXED: Mengubah _id menjadi ID dokumen live (tanpa drafts.) agar halaman front-end
-    // /pay-qris/[id] bisa langsung meng-query detail transaksi secara instan.
     const transactionData = {
       _type: 'donationTransaction',
       _id: `transaction-${prefix}-${timestamp}`, 
@@ -65,10 +56,51 @@ export async function POST(request: Request) {
       slug: String(slug),
     };
 
-    // Tulis dokumen baru langsung ke database Sanity sebagai dokumen Published
+    // Tulis dokumen ke Sanity
     await client.createOrReplace(transactionData);
-
     console.log(`🔒 TRANSAKSI OTOMATIS BERHASIL DIKUNCI: ${generatedOrderId} | Total: Rp ${totalAmount}`);
+
+    // ===================================================================
+    // 🚀 BONUS SAKTI: KIRIM WA INSTRUKSI PEMBAYARAN VIA FONNTE INSTAN
+    // ===================================================================
+    if (donorPhone) {
+      try {
+        // Ambil judul program donasi untuk mempercantik isi pesan WA
+        const foundProgram = await client.fetch(
+          `*[_type == "program" && slug.current == $slug][0]{ title }`,
+          { slug }
+        );
+        const programTitle = foundProgram?.title || 'Program Kebaikan';
+
+        const linkBayar = `https://www.indonesiamengaji.net/pay-qris/${generatedOrderId}`;
+
+        const pesanInstruksi = `Assalamu'alaikum Warahmatullahi Wabarakatuh, *${donorName}*.\n\n` +
+          `Terima kasih telah melakukan pengisian form donasi di Indonesia Mengaji. Berikut rincian instruksi pembayaran Anda:\n\n` +
+          `• *ID Transaksi:* ${generatedOrderId}\n` +
+          `• *Program:* ${programTitle}\n` +
+          `• *Nominal + Kode Unik:* *Rp ${totalAmount.toLocaleString('id-ID')}*\n` +
+          `• *Status:* Menunggu Pembayaran\n\n` +
+          `👉 *Silakan buka link berikut untuk scan QRIS secara otomatis:* \n${linkBayar}\n\n` +
+          ` Mohon transfer tepat hingga digit terakhir agar sistem dapat memverifikasi infak Anda secara otomatis. Syukron jazilan.\n\n` +
+          `— *Yayasan Generasi Indonesia Mengaji* —`;
+
+        const fonnteToken = process.env.FONNTE_TOKEN;
+        if (fonnteToken) {
+          await fetch('https://api.fonnte.com/send', {
+            method: 'POST',
+            headers: { 'Authorization': fonnteToken.trim() },
+            body: new URLSearchParams({
+              target: donorPhone.trim(),
+              message: pesanInstruksi,
+              countryCode: '62',
+            }),
+          });
+          console.log(`📩 WA Instruksi QRIS sukses dikirim ke ${donorPhone}`);
+        }
+      } catch (waErr) {
+        console.error('⚠️ Gagal mengirim WA instruksi (tapi transaksi tetap sukses dibuat):', waErr);
+      }
+    }
 
     return NextResponse.json({
       success: true,
