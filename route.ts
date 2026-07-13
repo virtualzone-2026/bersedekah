@@ -1,70 +1,80 @@
-// app/api/checkout/route.ts
+// app/api/webhook-wa/route.ts
 import { NextResponse } from 'next/server';
-import { createClient } from '@sanity/client';
+import { createClient } from 'next-sanity';
 
-// 🚀 MEMBACA KREDENSIAL LANGSUNG DARI FILE .ENV.LOCAL ANDA SECARA VALID
-const client = createClient({
+// Hubungkan client Sanity untuk menarik data judul program di backend
+const sanityClient = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
+  apiVersion: '2026-06-20',
   useCdn: false,
-  apiVersion: '2024-01-01',
-  token: process.env.SANITY_WRITE_TOKEN, // ➔ Menggunakan Token Editor dari env Anda
 });
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    
-    const slug = body.slug || '';
-    const donorName = body.donorName || body.name || 'Hamba Allah';
-    const donorPhone = body.donorPhone || body.phone || body.whatsapp || ''; 
-    
-    const rawAmount = body.amount || body.nominal || 0;
-    const cleanAmountNumber = Number(String(rawAmount).replace(/\D/g, ''));
 
-    if (!slug || !cleanAmountNumber || cleanAmountNumber < 10000) {
-      return NextResponse.json(
-        { success: false, error: 'Data tidak valid. Minimal donasi adalah Rp 10.000' },
-        { status: 400 }
-      );
+    // 🚀 FIXED: Menangkap 'slug' sesuai kiriman payload Projection Sanity Webhook yang baru
+    const { orderId, donorName, donorPhone, totalAmount, status, slug } = body;
+
+    // Keamanan: Hanya proses jika statusnya berubah menjadi "Success"
+    if (status !== 'Success' && status !== 'success') {
+      return NextResponse.json({ success: true, message: 'Status bkn Success, WA tdk dikirim.' });
     }
 
-    const uniqueCode = Math.floor(Math.random() * 900) + 100;
+    if (!donorPhone) {
+      return NextResponse.json({ success: false, error: 'Nomor WhatsApp donatur tidak ditemukan.' }, { status: 400 });
+    }
 
-    const baseAmount = Math.floor(cleanAmountNumber / 1000) * 1000;
-    const totalAmount = baseAmount + uniqueCode;
+    // 🚀 FIXED: Cari judul program donasi menggunakan query internal server berdasarkan slug
+    let programTitle = 'Program Kebaikan';
+    if (slug) {
+      const foundProgram = await sanityClient.fetch(
+        `*[_type == "program" && slug.current == $slug][0]{ title }`,
+        { slug }
+      );
+      if (foundProgram?.title) {
+        programTitle = foundProgram.title;
+      }
+    }
 
-    // 🚀 FULLY DYNAMIC PREFIX AUTOMATION:
-    // Mengubah slug menjadi huruf kapital dan membuang karakter strip (-) atau simbol lainnya
-    const cleanSlug = String(slug).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    // FORMAT TEMPLATE PESAN
+    const pesanWA = `Assalamu'alaikum Warahmatullahi Wabarakatuh, *${donorName}*.\n\n` +
+      `Alhamdulillah, kami mengonfirmasi bahwa donasi Anda telah kami terima dengan rincian berikut:\n\n` +
+      `• *ID Transaksi:* ${orderId}\n` +
+      `• *Program:* ${programTitle}\n` +
+      `• *Nominal:* Rp ${Number(totalAmount).toLocaleString('id-ID')}\n` +
+      `• *Status:* BERHASIL (DIVERIFIKASI)\n\n` +
+      `Jazakumullah khairan katsiran atas infak/sedekah terbaik yang telah Anda berikan. Semoga Allah SWT membalasnya dengan pahala yang berlipat ganda, membersihkan harta, memberikan kesehatan, serta mengalirkan keberkahan yang tiada putus untuk Anda dan keluarga. Aamiin Allahumma Aamiin.\n\n` +
+      `— *Yayasan Generasi Indonesia Mengaji* —`;
+
+    // TEMBAK KE API FONNTE
+    const fonnteToken = process.env.FONNTE_TOKEN;
     
-    // Mengambil 5 huruf pertama dari nama slug program sebagai prefix Order ID secara otomatis
-    const prefix = cleanSlug.slice(0, 5) || 'DONAS'; 
-    
-    const generatedOrderId = `INV-${prefix}-${Date.now()}`;
-
-    // Menulis data ke Sanity
-    await client.create({
-      _type: 'donationTransaction',
-      orderId: String(generatedOrderId),
-      donorName: String(donorName),
-      donorPhone: String(donorPhone),
-      amount: Number(baseAmount),         
-      uniqueCode: Number(uniqueCode),     
-      totalAmount: Number(totalAmount),   
-      status: 'pending',
-      slug: String(slug),
+    const fonnteResponse = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': fonnteToken || '',
+      },
+      body: new URLSearchParams({
+        target: donorPhone,
+        message: pesanWA,
+        countryCode: '62',
+      }),
     });
 
-    console.log(`🔒 TRANSAKSI SELESAI DIKUNCI: ${generatedOrderId} | Total: Rp ${totalAmount}`);
+    const fonnteJson = await fonnteResponse.json();
 
-    return NextResponse.json({
-      success: true,
-      orderId: generatedOrderId,
-    });
+    if (fonnteJson.status) {
+      console.log(`✅ WhatsApp Terima Kasih Berhasil Dikirim ke ${donorPhone} [${orderId}]`);
+      return NextResponse.json({ success: true, message: 'Pesan WA berhasil dikirim via Fonnte.' });
+    } else {
+      console.error('❌ Fonnte Error:', fonnteJson);
+      return NextResponse.json({ success: false, error: fonnteJson.reason || 'Gagal kirim via Fonnte' }, { status: 500 });
+    }
 
   } catch (error: any) {
-    console.error('🔥 BACKEND CHECKOUT ERROR:', error);
+    console.error('🔥 WEBHOOK WA ERROR:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
