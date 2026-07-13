@@ -35,12 +35,25 @@ export default defineType({
       validation: (Rule) => Rule.required().error('Kategori berita wajib dipilih'),
     }),
     
-    // 🚀 FIXED: Menambahkan field Alt Text dan Caption langsung di dalam komponen objek Image
+    // 🚀 BARU: Field Input untuk Link Video YouTube
+    defineField({
+      name: 'youtubeUrl',
+      title: 'Link Video YouTube (Opsional)',
+      type: 'url',
+      description: 'Masukkan URL video lengkap. Contoh: https://www.youtube.com/watch?v=xxxxxx atau https://youtu.be/xxxxxx',
+      validation: (Rule) =>
+        Rule.uri({
+          scheme: ['http', 'https'],
+        }),
+    }),
+    
+    // 🚀 FIXED: Menghapus Rule.required() agar admin bisa mengosongkan gambar jika ingin memakai thumbnail otomatis dari YouTube
     defineField({
       name: 'image',
-      title: 'Foto Utama Berita',
+      title: 'Foto Utama Berita / Custom Thumbnail',
       type: 'image',
       options: { hotspot: true },
+      description: 'Jika kolom Link YouTube diisi dan kolom ini Dikosongkan, maka sistem otomatis akan mengambil thumbnail langsung dari video YouTube tersebut.',
       fields: [
         defineField({
           name: 'caption',
@@ -53,10 +66,17 @@ export default defineType({
           title: 'Teks Alternatif (Alt Text)',
           type: 'string',
           description: 'Sangat penting untuk aksesibilitas dan optimasi SEO Google.',
-          validation: (Rule) => Rule.required().error('Alt text wajib diisi untuk kebutuhan SEO'),
+          // Diubah menjadi kondisional: Wajib diisi HANYA jika gambar diunggah secara manual
+          validation: (Rule) =>
+            Rule.custom((value, context) => {
+              const parent = context.parent as any;
+              if (parent?.asset && !value) {
+                return 'Alt text wajib diisi jika Anda mengunggah gambar kustom untuk kebutuhan SEO';
+              }
+              return true;
+            }),
         }),
       ],
-      validation: (Rule) => Rule.required().error('Foto berita wajib diunggah'),
     }),
     
     defineField({
