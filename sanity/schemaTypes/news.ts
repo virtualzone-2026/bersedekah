@@ -27,6 +27,8 @@ export default defineType({
       },
       validation: (Rule) => Rule.required().error('Slug wajib digenerate'),
     }),
+    
+    // 🚀 SEBAGAI ACUAN: Kategori Berita Utama
     defineField({
       name: 'category',
       title: 'Kategori Berita',
@@ -34,26 +36,47 @@ export default defineType({
       to: [{ type: 'category' }],
       validation: (Rule) => Rule.required().error('Kategori berita wajib dipilih'),
     }),
+
+    // 🚀 JURUS SAKTI: Menambahkan Tipe Format Konten agar pemisahan field menjadi sangat tegas, responsif, dan rapi!
+    defineField({
+      name: 'contentType',
+      title: 'Format Konten',
+      type: 'string',
+      options: {
+        list: [
+          { title: '📝 Artikel Teks Biasa', value: 'text' },
+          { title: '🎥 Video Kegiatan / YouTube', value: 'video' },
+        ],
+        layout: 'radio', // Dibuat tombol radio biar admin tinggal klik sat-set
+      },
+      initialValue: 'text',
+    }),
     
-    // 🚀 BARU: Field Input untuk Link Video YouTube
+    // 🚀 FIXED: Field ini sekarang SEPENUHNYA TERSEMBUNYI, kecuali admin memilih Format Konten "video"
     defineField({
       name: 'youtubeUrl',
-      title: 'Link Video YouTube (Opsional)',
+      title: 'Link Video YouTube',
       type: 'url',
       description: 'Masukkan URL video lengkap. Contoh: https://www.youtube.com/watch?v=xxxxxx atau https://youtu.be/xxxxxx',
+      hidden: ({ document }) => document?.contentType !== 'video', // ✨ Sembunyikan jika bukan video
       validation: (Rule) =>
-        Rule.uri({
-          scheme: ['http', 'https'],
+        Rule.custom((value, context) => {
+          const doc = context.document as any;
+          // Jika formatnya video, maka link YouTube wajib hukumnya diisi!
+          if (doc?.contentType === 'video' && !value) {
+            return 'Link video YouTube wajib diisi jika format konten adalah Video';
+          }
+          return true;
         }),
     }),
     
-    // 🚀 FIXED: Menghapus Rule.required() agar admin bisa mengosongkan gambar jika ingin memakai thumbnail otomatis dari YouTube
     defineField({
       name: 'image',
       title: 'Foto Utama Berita / Custom Thumbnail',
       type: 'image',
       options: { hotspot: true },
-      description: 'Jika kolom Link YouTube diisi dan kolom ini Dikosongkan, maka sistem otomatis akan mengambil thumbnail langsung dari video YouTube tersebut.',
+      // Penjelasan dinamis mengikuti pilihan Format Konten
+      description: 'Untuk format Artikel, unggah foto utama di sini. Untuk format Video, jika kolom ini dikosongkan, sistem otomatis mengambil thumbnail langsung dari YouTube.',
       fields: [
         defineField({
           name: 'caption',
@@ -66,7 +89,6 @@ export default defineType({
           title: 'Teks Alternatif (Alt Text)',
           type: 'string',
           description: 'Sangat penting untuk aksesibilitas dan optimasi SEO Google.',
-          // Diubah menjadi kondisional: Wajib diisi HANYA jika gambar diunggah secara manual
           validation: (Rule) =>
             Rule.custom((value, context) => {
               const parent = context.parent as any;
@@ -110,5 +132,6 @@ export default defineType({
   ],
   initialValue: () => ({
     publishedAt: new Date().toISOString(),
+    contentType: 'text', // default awal sebagai teks biasa
   }),
 });
