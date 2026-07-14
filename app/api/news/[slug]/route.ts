@@ -32,12 +32,14 @@ export async function GET(
       });
     }
 
-    // 🚀 FIXED GROQ DEEP DEREFERENCE: Mengamankan content block agar kebal dari eror objek {_ref, _type}
+    // 🚀 FIXED GROQ DEEP DEREFERENCE: Mengamankan content block dan menambahkan field Video
     const query = `{
       "article": *[_type == "news" && lower(slug.current) == lower($slug)][0] {
         "id": _id,
         title,
         "slug": slug.current,
+        contentType,   // 🌟 BARU: Mengambil format konten (text / video) dari CMS Sanity
+        youtubeUrl,    // 🌟 BARU: Mengambil tautan link YouTube untuk di-embed di frontend
         "imageUrl": image.asset->url,
         "caption": image.caption,
         "alt": image.alt,
