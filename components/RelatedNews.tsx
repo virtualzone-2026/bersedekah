@@ -18,31 +18,44 @@ export default function RelatedNews({ currentSlug, category, allNews }: RelatedN
     if (!val) return '';
     if (typeof val === 'string') return val.trim();
     if (typeof val === 'object' && val.current) return String(val.current).trim();
-    return ''; // Mengembalikan string kosong jika tipe datanya berupa objek mentah Sanity {_ref, _type}
+    return '';
   };
 
   const activeSlug = typeof currentSlug === 'string' ? currentSlug.trim() : '';
   const targetCategory = extractString(category).toLowerCase();
 
-  // 1. Ambil artikel dengan kategori serupa (kecuali artikel aktif yang sedang dibaca)
+  // 1. Ambil artikel dengan kategori serupa (Kecuali artikel aktif & steril dari format VIDEO)
   const related = allNews.filter((post: any) => {
     const postSlug = extractString(post?.slug);
     const postCategory = extractString(post?.category).toLowerCase();
+    
+    // 🚀 FIXED SECURITY FILTER: Menepis konten video dan link youtube agar tidak bocor ke seksi ini
+    const isVideoFormat = post?.contentType === 'video';
+    const hasYoutube = post?.youtubeUrl || post?.videoUrl || false;
     
     return (
       postSlug !== '' &&
       postSlug !== activeSlug &&
       postCategory !== '' &&
-      postCategory === targetCategory
+      postCategory === targetCategory &&
+      !isVideoFormat &&
+      !hasYoutube
     );
   });
 
-  // 2. Ambil artikel berita terbaru lainnya sebagai cadangan slot jika kategori sejenis kurang dari 3
+  // 2. Ambil artikel berita terbaru lainnya sebagai cadangan slot (Tetap harus steril dari VIDEO)
   const fallback = allNews.filter((post: any) => {
     const postSlug = extractString(post?.slug);
+    
+    // 🚀 FIXED SECURITY FILTER: Fallback juga wajib disaring agar tidak memasukkan video
+    const isVideoFormat = post?.contentType === 'video';
+    const hasYoutube = post?.youtubeUrl || post?.videoUrl || false;
+
     return (
       postSlug !== '' &&
       postSlug !== activeSlug &&
+      !isVideoFormat &&
+      !hasYoutube &&
       !related.some((r: any) => r.id === post.id)
     );
   });
