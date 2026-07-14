@@ -85,8 +85,9 @@ export default function YoutubeCard({ news }: YoutubeCardProps) {
         </div>
 
         {/* Tombol Aksi Menuju Halaman Detail */}
+        {/* 🚀 FIXED: href diganti menjadi /blog/${news.slug.current} agar lurus searah dengan routing Next.js kamu */}
         <Link 
-          href={`/news/${news.slug.current}`}
+          href={`/blog/${news.slug.current}`}
           className="w-full text-center bg-gray-50 border border-gray-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-100 text-gray-600 font-bold py-2 rounded-xl text-[11px] transition-colors duration-200 mt-auto block"
         >
           {videoId ? 'Tonton Video & Baca 🚀' : 'Baca Selengkapnya 📖'}

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createClient } from 'next-sanity';
-import YoutubeCard from './YoutubeCard'; // 🚀 Tinggal panggil komponen yang sudah ada
+import YoutubeCard from './YoutubeCard'; // Memanggil komponen yang sudah diperbaiki routing /blog/ nya
 
 const sanityClient = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
@@ -16,8 +16,8 @@ export default function VideoActivities() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Ambil data berita yang ada link youtube-nya
-    const query = `*[_type == "news" && defined(youtubeUrl)] | order(publishedAt desc)[0..2] {
+    // 🚀 FIXED: Mengubah filter query agar mencocokkan contentType == "video" yang baru kita buat di skema Sanity
+    const query = `*[_type == "news" && contentType == "video" && defined(youtubeUrl)] | order(publishedAt desc)[0..2] {
       title,
       slug,
       youtubeUrl,
@@ -32,13 +32,13 @@ export default function VideoActivities() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Fetch video error:', err);
+        console.error('Fetch video activities error:', err);
         setLoading(false);
       });
   }, []);
 
   if (loading) return <div className="text-center py-6 text-xs text-gray-400 font-medium">Memuat video kegiatan...</div>;
-  if (videos.length === 0) return null;
+  if (videos.length === 0) return null; // Menyembunyikan komponen otomatis jika admin belum mengunggah konten video
 
   return (
     <div className="space-y-6 pt-4">
@@ -51,7 +51,7 @@ export default function VideoActivities() {
         </p>
       </div>
 
-      {/* Grid untuk menampilkan YoutubeCard */}
+      {/* Grid responsif untuk menampilkan YoutubeCard */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {videos.map((videoItem: any) => (
           <YoutubeCard key={videoItem.slug.current} news={videoItem} />
