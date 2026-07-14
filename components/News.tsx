@@ -18,7 +18,11 @@ export default function News() {
     })
       .then((res) => res.json())
       .then((json) => {
-        if (json.success) setNewsList(json.data);
+        if (json.success) {
+          // 🚀 BARU: Filter data agar format konten berjenis "video" tidak dimasukkan ke seksi ini
+          const textArticlesOnly = json.data.filter((item: any) => item.contentType !== 'video');
+          setNewsList(textArticlesOnly);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -30,7 +34,7 @@ export default function News() {
   if (loading) return <div className="text-gray-400 text-xs text-center py-8">Memuat kabar terbaru...</div>;
   if (newsList.length === 0) return null;
 
-  // Batasi hanya menampilkan maksimal 4 artikel terbaru di halaman utama
+  // Batasi hanya menampilkan maksimal 4 artikel terbaru (non-video) di halaman utama
   const displayNews = newsList.slice(0, 4);
 
   return (
