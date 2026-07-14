@@ -9,12 +9,11 @@ interface YoutubeCardProps {
     slug: { current: string };
     categoryName?: string;
     youtubeUrl?: string;
-    imageUrl?: string; // URL hasil parsing image.asset->url dari GROQ
+    imageUrl?: string; 
     publishedAt: string;
   };
 }
 
-// Fungsi pembantu untuk mengambil ID Video dari URL YouTube (mendukung watch?v= dan youtu.be/)
 const getYoutubeId = (url: string | undefined): string | null => {
   if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -25,12 +24,11 @@ const getYoutubeId = (url: string | undefined): string | null => {
 export default function YoutubeCard({ news }: YoutubeCardProps) {
   const videoId = getYoutubeId(news.youtubeUrl);
   
-  // Tentukan thumbnail: Gunakan custom image Sanity jika ada, jika tidak ada gunakan thumbnail otomatis YouTube
   const thumbnailSrc = news.imageUrl 
     ? news.imageUrl 
     : videoId 
       ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-      : '/images/default-thumbnail.jpg'; // fallback jika dua-duanya kosong
+      : '/images/default-thumbnail.jpg';
 
   const formattedDate = new Date(news.publishedAt).toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -40,8 +38,12 @@ export default function YoutubeCard({ news }: YoutubeCardProps) {
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col group">
-      {/* Bagian Thumbnail Video */}
-      <div className="relative aspect-video w-full bg-gray-100 overflow-hidden">
+      
+      {/* 🚀 FIXED: Sekarang seluruh area area gambar dan play overlay dibungkus Link agar bisa diklik */}
+      <Link 
+        href={`/blog/${news.slug.current}`}
+        className="relative aspect-video w-full bg-gray-100 overflow-hidden block cursor-pointer"
+      >
         <img 
           src={thumbnailSrc} 
           alt={news.title} 
@@ -49,7 +51,7 @@ export default function YoutubeCard({ news }: YoutubeCardProps) {
           loading="lazy"
         />
         
-        {/* Jika ini adalah konten YouTube, tampilkan tombol Play Overlay yang elegan */}
+        {/* Play Overlay Button */}
         {videoId && (
           <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/40 transition-colors duration-300">
             <div className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
@@ -65,13 +67,13 @@ export default function YoutubeCard({ news }: YoutubeCardProps) {
           </div>
         )}
 
-        {/* Tag Kategori di pojok atas */}
+        {/* Tag Kategori tetap di atas gambar */}
         {news.categoryName && (
-          <span className="absolute top-3 left-3 bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm uppercase tracking-wider">
+          <span className="absolute top-3 left-3 bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm uppercase tracking-wider z-10">
             {news.categoryName}
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Bagian Informasi Teks */}
       <div className="p-4 flex flex-col flex-grow justify-between space-y-3">
@@ -79,19 +81,21 @@ export default function YoutubeCard({ news }: YoutubeCardProps) {
           <span className="text-[10px] text-gray-400 font-semibold tracking-wide">
             {formattedDate}
           </span>
-          <h3 className="text-sm font-bold text-gray-800 line-clamp-2 mt-1 group-hover:text-emerald-600 transition-colors duration-200 leading-snug">
-            {news.title}
-          </h3>
+          {/* 🚀 FIXED: Judul juga ikut dibungkus Link agar ramah navigasi pengguna */}
+          <Link href={`/blog/${news.slug.current}`}>
+            <h3 className="text-sm font-bold text-gray-800 line-clamp-2 mt-1 group-hover:text-emerald-600 transition-colors duration-200 leading-snug cursor-pointer">
+              {news.title}
+            </h3>
+          </Link>
         </div>
 
-        {/* Tombol Aksi Menuju Halaman Detail */}
-        {/* 🚀 FIXED: href diganti menjadi /blog/${news.slug.current} agar lurus searah dengan routing Next.js kamu */}
-        <Link 
-          href={`/blog/${news.slug.current}`}
-          className="w-full text-center bg-gray-50 border border-gray-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-100 text-gray-600 font-bold py-2 rounded-xl text-[11px] transition-colors duration-200 mt-auto block"
-        >
-          {videoId ? 'Tonton Video & Baca 🚀' : 'Baca Selengkapnya 📖'}
-        </Link>
+        {/* Tombol Aksi Bawah */}
+       <Link 
+  href={`/blog/${news.slug.current}`}
+  className="w-full text-center bg-gray-50 border border-gray-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-100 text-gray-600 font-bold py-2 rounded-xl text-[11px] transition-colors duration-200 mt-auto block"
+>
+  Tonton Video 🚀
+</Link>
       </div>
     </div>
   );
