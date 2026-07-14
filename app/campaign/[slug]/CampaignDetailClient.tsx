@@ -112,6 +112,9 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
   const reportList = program.reports || [];
   const displayCollected = program.collected || `Rp ${Number(program.collectedRaw).toLocaleString('id-ID')}`;
 
+  // 🚀 FIXED: Fallback Cerdas untuk mendeteksi jalur URL gambar dari initial server query maupun internal API route
+  const campaignImage = program.image || program.imageUrl || '/images/placeholder.jpg';
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-16 pb-32 lg:pb-8">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -127,8 +130,9 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
             </h1>
           </div>
           
+          {/* 🚀 FIXED: Menggunakan variabel campaignImage yang sudah diproteksi agar thumbnail tidak hilang/blank */}
           <div className="rounded-2xl overflow-hidden bg-gray-100 aspect-[16/9] w-full shadow-sm border border-gray-200/60">
-            <img src={program.image} alt={program.title} className="w-full h-full object-cover" />
+            <img src={campaignImage} alt={program.title} className="w-full h-full object-cover" />
           </div>
 
           {/* Menambahkan Tab Laporan Penyaluran */}
