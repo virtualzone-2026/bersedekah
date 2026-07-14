@@ -32,19 +32,19 @@ export async function GET(
       });
     }
 
-    // 🚀 FIXED GROQ DEEP DEREFERENCE: Mengamankan content block dan menambahkan field Video
+    // 🚀 FIXED GROQ DEEP DEREFERENCE: Mengamankan content block dan menambahkan field Video di allNews
     const query = `{
       "article": *[_type == "news" && lower(slug.current) == lower($slug)][0] {
         "id": _id,
         title,
         "slug": slug.current,
-        contentType,   // 🌟 BARU: Mengambil format konten (text / video) dari CMS Sanity
-        youtubeUrl,    // 🌟 BARU: Mengambil tautan link YouTube untuk di-embed di frontend
+        contentType,   // 🌟 Mengambil format konten (text / video) dari CMS Sanity
+        youtubeUrl,    // 🌟 Mengambil tautan link YouTube untuk di-embed di frontend
         "imageUrl": image.asset->url,
         "caption": image.caption,
         "alt": image.alt,
         publishedAt,
-        category,
+        "category": coalesce(category->title, category, "Kabar Terbaru"),
         // 🎯 Membedah block content dan memaksa aset gambar internal untuk ter-dereference ke url
         content[] {
           ...,
@@ -64,9 +64,11 @@ export async function GET(
         "id": _id,
         title,
         "slug": slug.current,
+        contentType,   // 🌟 BARU: Wajib ditarik di sini agar filter di RelatedNews frontend berfungsi!
+        youtubeUrl,    // 🌟 BARU: Pengaman ekstra penepis video
         "imageUrl": image.asset->url,
         publishedAt,
-        category
+        "category": coalesce(category->title, category, "Kabar Terbaru")
       },
       "sidebarCampaigns": *[_type == "program"] | order(_createdAt desc)[0..2] {
         "id": _id,
