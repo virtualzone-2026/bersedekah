@@ -19,8 +19,14 @@ export default function News() {
       .then((res) => res.json())
       .then((json) => {
         if (json.success) {
-          // 🚀 BARU: Filter data agar format konten berjenis "video" tidak dimasukkan ke seksi ini
-          const textArticlesOnly = json.data.filter((item: any) => item.contentType !== 'video');
+          // 🚀 FIXED & SECURITY FILTER: Menyaring ganda berdasarkan contentType maupun keberadaan youtubeUrl
+          // Ini memastikan video otomatis hilang dari seksi ini walaupun API internal kamu lupa me-return contentType!
+          const textArticlesOnly = json.data.filter((item: any) => {
+            const isVideoFormat = item.contentType === 'video';
+            const hasYoutubeLink = item.youtubeUrl || (item.videoUrl) || false;
+            return !isVideoFormat && !hasYoutubeLink;
+          });
+          
           setNewsList(textArticlesOnly);
         }
         setLoading(false);
