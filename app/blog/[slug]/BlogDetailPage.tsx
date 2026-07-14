@@ -126,19 +126,52 @@ export default function BlogDetailPage() {
             <span>{formattedDate}</span>
           </div>
 
-          {/* Foto Utama Artikel */}
-          <div className="space-y-2 w-full">
-            <div className="rounded-2xl overflow-hidden bg-gray-100 aspect-[16/9] w-full shadow-sm border border-gray-200/60">
-              <img 
-                src={typeof article?.imageUrl === 'string' ? article.imageUrl : '/images/placeholder.jpg'} 
-                alt={renderSafeString(article?.alt, titleString)} 
-                className="w-full h-full object-cover" 
-              />
+          {/* ===================================================================
+              🚀 FIXED: AREA FOTO UTAMA / PEMUTAR VIDEO YOUTUBE KONDISIONAL
+              =================================================================== */}
+          {article?.contentType === 'video' && article?.youtubeUrl ? (
+            /* JIKA KONTEN VIDEO: Tampilkan iFrame Player YouTube */
+            <div className="w-full space-y-2">
+              <div className="rounded-2xl overflow-hidden bg-black aspect-video w-full shadow-md border border-gray-200/60 relative">
+                {(() => {
+                  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                  const match = article.youtubeUrl.match(regExp);
+                  const videoId = match && match[2].length === 11 ? match[2] : null;
+
+                  if (!videoId) {
+                    return <div className="text-white text-xs text-center p-10 flex items-center justify-center h-full">Link video YouTube tidak valid.</div>;
+                  }
+
+                  return (
+                    <iframe
+                      className="w-full h-full border-0 absolute inset-0"
+                      src={`https://www.youtube.com/embed/${videoId}`}
+                      title={titleString}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    ></iframe>
+                  );
+                })()}
+              </div>
+              <p className="text-[11px] text-gray-400 font-semibold text-center leading-relaxed max-w-2xl mx-auto italic">
+                Tonton dokumentasi video kegiatan: {titleString}
+              </p>
             </div>
-            <p className="text-[11px] text-gray-400 font-semibold text-center leading-relaxed max-w-2xl mx-auto">
-              Foto: {renderSafeString(article?.caption, `Dokumentasi Kegiatan ${titleString}`)}
-            </p>
-          </div>
+          ) : (
+            /* JIKA KONTEN TEKS ARTIKEL BIASA: Tampilkan Foto Utama */
+            <div className="space-y-2 w-full">
+              <div className="rounded-2xl overflow-hidden bg-gray-100 aspect-[16/9] w-full shadow-sm border border-gray-200/60">
+                <img 
+                  src={typeof article?.imageUrl === 'string' ? article.imageUrl : '/images/placeholder.jpg'} 
+                  alt={renderSafeString(article?.alt, titleString)} 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+              <p className="text-[11px] text-gray-400 font-semibold text-center leading-relaxed max-w-2xl mx-auto">
+                Foto: {renderSafeString(article?.caption, `Dokumentasi Kegiatan ${titleString}`)}
+              </p>
+            </div>
+          )}
 
           {/* Isi Konten Utama Berita */}
           <div className="text-gray-700 text-base leading-relaxed space-y-5 font-normal tracking-wide py-4 border-b border-gray-100 prose prose-emerald max-w-none w-full dynamic-portable-text">
