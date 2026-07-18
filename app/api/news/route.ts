@@ -31,12 +31,13 @@ function timeAgo(dateString: string) {
 
 export async function GET() {
   try {
-    // 🚀 FIXED QUERY GROQ: Menambahkan contentType ke dalam query data dari Sanity
+    // 🚀 FIXED QUERY GROQ: Menambahkan youtubeUrl ke dalam query data dari Sanity
     const query = `*[_type == "news"] | order(publishedAt desc)[0..11] {
       "id": _id,
       "slug": slug.current,
       title,
-      contentType, // 🌟 BARU: Wajib diambil agar frontend tahu format artikel (text / video)
+      contentType, 
+      youtubeUrl,  // 🌟 FIXED: Wajib ditarik agar frontend bisa dapet ID video YouTube!
       "image": image.asset->url,
       "category": coalesce(category->title, category, "Kabar Terbaru"),
       publishedAt
@@ -48,12 +49,13 @@ export async function GET() {
       next: { revalidate: 0 }
     });
 
-    // Proyeksikan data hasil fetch dan sertakan property contentType untuk dipasok ke frontend
+    // Proyeksikan data hasil fetch dan sertakan property youtubeUrl ke dalam mapping objek
     const formattedNews = sanityNews.map((item: any) => ({
       id: item.id,
       slug: item.slug,
       title: item.title,
-      contentType: item.contentType || 'text', // 🌟 BARU: Default ke 'text' jika kosong
+      contentType: item.contentType || 'text', 
+      youtubeUrl: item.youtubeUrl || null, // 🌟 FIXED: Diteruskan ke objek frontend
       image: item.image || '/images/placeholder.jpg',
       category: item.category,
       publishedAt: item.publishedAt,
