@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const finalImage = shareImage || 'https://www.indonesiamengaji.net/og-default.png';
 
     return {
-      title: `${article.title} - Wasilah News`,
+      title: `${article.title} - Indonesia Mengaji News`,
       openGraph: {
         title: article.title,
         description: 'Baca kabar terbaru seputar aksi nyata dan syiar dakwah Yayasan Indonesia Mengaji.',
@@ -75,7 +75,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-// Halaman utama server yang merender tampilan client
-export default async function Page() {
+// 🚀 FIXED: Halaman utama server meneruskan params secara utuh ke Client Component untuk memaksa pergantian state data baru
+export default async function Page({ params }: Props) {
   return <BlogDetailPage />;
 }
