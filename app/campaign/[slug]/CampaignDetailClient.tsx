@@ -28,7 +28,6 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
       .then((json) => {
         if (json.success) {
           const found = json.data.find((p: any) => p.slug === slug);
-          // Pertahankan data reports dari server side agar tidak hilang saat re-fetch internal
           setProgram((prev: any) => ({ ...found, reports: prev?.reports || initialProgram?.reports || [] }));
         }
         setLoading(false);
@@ -56,7 +55,7 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
     };
   }, [loading, program]);
 
-  // 🚀 LOGIKA PINTAR MINIMAL DONASI (KEBAL TANDA PETIK & CARAKTER KHUSUS)
+  // 🚀 LOGIKA PRESISI MINIMAL DONASI
   const normalizeText = (text: string = '') => 
     text.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -64,14 +63,16 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
   const normalizedTitle = normalizeText(program?.title);
   const normalizedCategory = normalizeText(program?.category);
 
-  // Cek apakah judul, slug, atau kategori mengandung kata 'quran'
-  const isQuranProgram = 
-    normalizedSlug.includes('quran') || 
-    normalizedTitle.includes('quran') || 
-    normalizedCategory.includes('quran');
+  // Hanya Rp 40.000 jika mengandung "Wakaf" & "Quran" ATAU kata "Mushaf"
+  const isWakafQuran = 
+    (normalizedTitle.includes('wakaf') && normalizedTitle.includes('quran')) ||
+    (normalizedSlug.includes('wakaf') && normalizedSlug.includes('quran')) ||
+    (normalizedCategory.includes('wakaf') && normalizedCategory.includes('quran')) ||
+    normalizedTitle.includes('mushaf') ||
+    normalizedSlug.includes('mushaf');
 
-  const minAmount = isQuranProgram ? 40000 : 1000;
-  const minAmountLabel = isQuranProgram ? '40.000' : '1.000';
+  const minAmount = isWakafQuran ? 40000 : 1000;
+  const minAmountLabel = isWakafQuran ? '40.000' : '1.000';
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/[^0-9]/g, '');
@@ -86,7 +87,6 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
   const handleDonate = async () => {
     const cleanAmount = amount.replace(/\./g, '');
     
-    // Validasi nominal berdasarkan tipe program
     if (!cleanAmount || Number(cleanAmount) < minAmount) {
       alert(`Masukkan nominal donasi minimal Rp ${minAmountLabel} ya!`);
       return;
