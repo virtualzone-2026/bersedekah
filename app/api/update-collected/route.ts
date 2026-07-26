@@ -14,41 +14,61 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // Tarik data kiriman dari endpoint pembayaran (tambahkan donorName, donorPhone, dan orderId dari trigger payment-mu)
-    const { slug, amountToAdd, donorName, donorPhone, orderId } = body;
+    // Tarik data yang pasti dikirim oleh sistem pembayaran Anda
+    const { slug, amountToAdd, orderId } = body;
 
     if (!slug || !amountToAdd) {
       return NextResponse.json({ success: false, error: 'Missing slug or amount' }, { status: 400 });
     }
 
     // 🚀 1. Cari dokumen program donasi yang memiliki slug tersebut
-    const query = `*[_type == "programDonasi" && slug.current == $slug][0]`;
-    const program = await client.fetch(query, { slug });
+    const queryProgram = `*[_type == "programDonasi" && slug.current == $slug][0]`;
+    const program = await client.fetch(queryProgram, { slug });
 
     if (!program) {
       return NextResponse.json({ success: false, error: 'Program tidak ditemukan' }, { status: 404 });
     }
 
-    // 🚀 2. Lakukan mutasi 'inc' (increment) untuk menambahkan nominal ke collectedRaw secara atomik
+    // 🚀 2. Lakukan mutasi 'inc' untuk menambahkan nominal ke collectedRaw secara atomik
     await client
       .patch(program._id)
       .inc({ collectedRaw: Number(amountToAdd) })
       .commit();
 
     // ===================================================================
-    // 🚀 TRIGGER WA TERIMA KASIH LANGSUNG DI NEXT.JS BACKEND
+    // 🚀 MENCARI DATA TRANSKASI DONATUR SECARA MANDIRI (ANTI-KOSONG)
     // ===================================================================
-    const targetPhone = donorPhone || body.phone || body.whatsapp;
-    
+    // Server mencari data nama dan nomor telepon langsung dari database berdasarkan orderId atau nominal
+    let donorName = 'Hamba Allah';
+    let targetPhone = '';
+    let transactionId = orderId || '';
+
+    try {
+      const queryTx = orderId 
+        ? `*[_type == "donationTransaction" && orderId == $orderId][0]{ donorName, donorPhone, orderId }`
+        : `*[_type == "donationTransaction" && totalAmount == $totalAmount && status == "pending"][0]{ donorName, donorPhone, orderId }`;
+      
+      const txParams = orderId ? { orderId } : { totalAmount: Number(amountToAdd) };
+      const transaction = await client.fetch(queryTx, txParams);
+
+      if (transaction) {
+        donorName = transaction.donorName || 'Hamba Allah';
+        targetPhone = transaction.donorPhone || '';
+        transactionId = transaction.orderId || transactionId;
+      }
+    } catch (dbErr) {
+      console.error('⚠️ Gagal fetch data transaksi donatur:', dbErr);
+    }
+
+    // ===================================================================
+    // 🚀 EKSEKUSI KIRIM WA JIKA NOMOR TELEPON BERHASIL DITEMUKAN
+    // ===================================================================
     if (targetPhone) {
       try {
         const programTitle = program.title || 'Program Kebaikan';
-        const namaDonatur = donorName || 'Hamba Allah';
-        const idTransaksi = orderId || `TX-${Date.now().toString().slice(-6)}`;
-
-        const pesanWA = `Assalamu'alaikum Warahmatullahi Wabarakatuh, *${namaDonatur}*.\n\n` +
+        const pesanWA = `Assalamu'alaikum Warahmatullahi Wabarakatuh, *${donorName}*.\n\n` +
           `Alhamdulillah, kami mengonfirmasi bahwa donasi Anda telah kami terima dengan rincian berikut:\n\n` +
-          `• *ID Transaksi:* ${idTransaksi}\n` +
+          `• *ID Transaksi:* ${transactionId || 'TX-' + Date.now().toString().slice(-6)}\n` +
           `• *Program:* ${programTitle}\n` +
           `• *Nominal:* Rp ${Number(amountToAdd).toLocaleString('id-ID')}\n` +
           `• *Status:* BERHASIL (DIVERIFIKASI)\n\n` +
@@ -70,16 +90,18 @@ export async function POST(request: Request) {
           });
           
           const fonnteJson = await fonnteResponse.json();
-          console.log(`💬 STATUS FONNTE DI UPDATE-COLLECTED:`, JSON.stringify(fonnteJson));
+          console.log(`💬 STATUS RESPONS FONNTE:`, JSON.stringify(fonnteJson));
         }
       } catch (waErr) {
-        console.error('⚠️ Logika Fonnte gagal eksekusi:', waErr);
+        console.error('⚠️ Eksekusi Fonnte gagal:', waErr);
       }
+    } else {
+      console.log('💡 WA tidak dikirim karena targetPhone tidak ditemukan di database.');
     }
 
     return NextResponse.json({ 
       success: true, 
-      message: `Berhasil menambahkan Rp ${amountToAdd} ke program ${slug} dan mengirim notifikasi.` 
+      message: `Berhasil menambahkan Rp ${amountToAdd} ke program ${slug} dan memproses WhatsApp.` 
     });
 
   } catch (error: any) {

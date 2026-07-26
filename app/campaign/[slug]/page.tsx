@@ -1,4 +1,3 @@
-// app/campaign/[slug]/page.tsx
 import React from 'react';
 import { Metadata } from 'next';
 import { createClient } from 'next-sanity';
@@ -11,8 +10,12 @@ const sanityClient = createClient({
   useCdn: false,
 });
 
-// 🚀 FIXED: Menambahkan await pada params untuk standard Next.js dynamic routing
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> | { slug: string } }): Promise<Metadata> {
+interface Props {
+  params: Promise<{ slug: string }> | { slug: string };
+}
+
+// 🚀 JURUS SEO: Menambah Metadata agar gambar Campaign muncul saat dishare
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const resolvedParams = await params;
     const slug = resolvedParams.slug;
@@ -26,45 +29,33 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const program = await sanityClient.fetch(query, { slug });
 
     if (!program) {
-      return { title: 'Program Tidak Ditemukan - Indonesia Mengaji' };
+      return { title: 'Program Tidak Ditemukan' };
     }
 
-    const textDesc = typeof program.description === 'string' 
-      ? program.description 
-      : 'Salurkan infak terbaik Anda melalui program galang dana resmi Yayasan Indonesia Mengaji.';
+    const finalImage = program.imageUrl || 'https://www.indonesiamengaji.net/og-default.png';
 
     return {
       title: `${program.title} - Indonesia Mengaji`,
-      description: textDesc.slice(0, 160),
+      description: typeof program.description === 'string' ? program.description.slice(0, 160) : 'Salurkan infak terbaik Anda.',
       openGraph: {
         title: program.title,
-        description: textDesc.slice(0, 160),
         url: `https://www.indonesiamengaji.net/campaign/${slug}`,
-        siteName: 'Indonesia Mengaji',
-        images: [
-          {
-            url: program.imageUrl || 'https://www.indonesiamengaji.net/og-default.png',
-            width: 1200,
-            height: 630,
-            alt: program.title,
-          },
-        ],
-        type: 'article',
+        images: [{ url: finalImage, width: 1200, height: 630, alt: program.title }],
+        type: 'website',
       },
       twitter: {
         card: 'summary_large_image',
         title: program.title,
-        description: textDesc.slice(0, 160),
-        images: [program.imageUrl || 'https://www.indonesiamengaji.net/og-default.png'],
+        images: [finalImage],
       },
     };
   } catch (error) {
-    return { title: 'Indonesia Mengaji - Budayakan Mengaji Wujudkan Generasi Qur\'an' };
+    return { title: 'Indonesia Mengaji' };
   }
 }
 
-// 🚀 FIXED: Menambahkan await pada params di main component
-export default async function Page({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
+// 🚀 Memanggil komponen client yang sudah ada
+export default async function Page({ params }: Props) {
   const resolvedParams = await params;
   const slug = resolvedParams.slug;
 
@@ -75,7 +66,15 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     category,
     "image": image.asset->url,
     targetAmount,
-    description
+    description,
+    "reports": *[_type == "distributionReport" && program._ref == ^._id] | order(date desc) {
+      "id": _id,
+      title,
+      date,
+      description,
+      "images": images[].asset->url,
+      amountSpent
+    }
   }`;
   
   const initialProgram = await sanityClient.fetch(query, { slug });

@@ -1,8 +1,8 @@
-// app/page.tsx
 import React from 'react';
 import Hero from '@/components/Hero';
 import Campaign from '@/components/Campaign';
 import News from '@/components/News';
+import VideoActivities from '@/components/VideoActivities'; // 🚀 BARU: Mengimpor komponen Video Kegiatan
 
 // 🚀 JURUS SAKTI ANTI-CACHE: Memaksa Next.js untuk selalu mengambil data paling segar dari API Sanity saat halaman diakses!
 export const dynamic = 'force-dynamic';
@@ -40,6 +40,11 @@ export default function HomePage() {
               SEKSI 2: KABAR & INFORMASI TERBARU YAYASAN (GRID 4 KOLOM MINIMALIS)
               =================================================================== */}
           <News />
+
+          {/* ===================================================================
+              🚀 SEKSI 3: DOKUMENTASI & VIDEO KEGIATAN TERBARU (YOUTUBE CARDS GRID)
+              =================================================================== */}
+          <VideoActivities />
 
         </div>
       </div>

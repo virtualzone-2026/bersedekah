@@ -1,4 +1,3 @@
-// app/campaign/[slug]/CampaignDetailClient.tsx
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -12,12 +11,12 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
   const [donorPhone, setDonorPhone] = useState(''); 
   const [submitting, setSubmitting] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<'cerita' | 'donatur'>('cerita');
+  // State tab menu
+  const [activeTab, setActiveTab] = useState<'cerita' | 'donatur' | 'laporan'>('cerita');
   const [isFormVisible, setIsFormVisible] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Tetap fetch berkala untuk memastikan nominal donasi terkumpul selalu fresh & real-time
     fetch('/api/programs?v=' + Date.now(), {
       cache: 'no-store',
       headers: {
@@ -29,7 +28,8 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
       .then((json) => {
         if (json.success) {
           const found = json.data.find((p: any) => p.slug === slug);
-          setProgram(found);
+          // Pertahankan data reports dari server side agar tidak hilang saat re-fetch internal
+          setProgram((prev: any) => ({ ...found, reports: prev?.reports || initialProgram?.reports || [] }));
         }
         setLoading(false);
       })
@@ -37,7 +37,7 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
         console.error('Fetch detail campaign error:', err);
         setLoading(false);
       });
-  }, [slug]);
+  }, [slug, initialProgram]);
 
   useEffect(() => {
     const currentFormRef = formRef.current;
@@ -68,8 +68,10 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
 
   const handleDonate = async () => {
     const cleanAmount = amount.replace(/\./g, '');
-    if (!cleanAmount || Number(cleanAmount) < 10000) {
-      alert('Masukkan nominal donasi minimal Rp 10.000 gaes!');
+    
+    // 🚀 FIXED: Menaikkan ambang batas minimal donasi menjadi Rp 40.000
+    if (!cleanAmount || Number(cleanAmount) < 40000) {
+      alert('Masukkan nominal donasi minimal Rp 40.000 ya!');
       return;
     }
 
@@ -109,7 +111,10 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
   const rawTarget = program.targetAmount || 50000000;
   const percentage = Math.min(Math.round((program.collectedRaw / rawTarget) * 100), 100);
   const donorList = program.donors || [];
+  const reportList = program.reports || [];
   const displayCollected = program.collected || `Rp ${Number(program.collectedRaw).toLocaleString('id-ID')}`;
+
+  const campaignImage = program.image || program.imageUrl || '/images/placeholder.jpg';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-16 pb-32 lg:pb-8">
@@ -127,12 +132,16 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
           </div>
           
           <div className="rounded-2xl overflow-hidden bg-gray-100 aspect-[16/9] w-full shadow-sm border border-gray-200/60">
-            <img src={program.image} alt={program.title} className="w-full h-full object-cover" />
+            <img src={campaignImage} alt={program.title} className="w-full h-full object-cover" />
           </div>
 
+          {/* Tab Laporan Penyaluran */}
           <div className="flex border-b border-gray-200 text-xs font-bold text-gray-400 space-x-6 pt-2">
             <button onClick={() => setActiveTab('cerita')} className={`pb-3 focus:outline-none ${activeTab === 'cerita' ? 'text-emerald-600 border-b-2 border-emerald-600' : 'hover:text-gray-600 border-b-2 border-transparent'}`}>
               DETAIL CERITA
+            </button>
+            <button onClick={() => setActiveTab('laporan')} className={`pb-3 focus:outline-none ${activeTab === 'laporan' ? 'text-emerald-600 border-b-2 border-emerald-600' : 'hover:text-gray-600 border-b-2 border-transparent'}`}>
+              KABAR &amp; PENYALURAN ({reportList.length})
             </button>
             <button onClick={() => setActiveTab('donatur')} className={`pb-3 focus:outline-none ${activeTab === 'donatur' ? 'text-emerald-600 border-b-2 border-emerald-600' : 'hover:text-gray-600 border-b-2 border-transparent'}`}>
               DONATUR ({donorList.length})
@@ -140,7 +149,7 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
           </div>
 
           <div className="bg-transparent py-2 w-full">
-            {activeTab === 'cerita' ? (
+            {activeTab === 'cerita' && (
               <div className="text-gray-700 text-base leading-relaxed space-y-4 font-normal tracking-wide dynamic-portable-text">
                 {program.description ? (
                   typeof program.description === 'string' ? <p>{program.description}</p> : <PortableText value={program.description} />
@@ -148,7 +157,48 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
                   <p className="text-gray-400 italic text-xs">Belum ada cerita detail.</p>
                 )}
               </div>
-            ) : (
+            )}
+
+            {activeTab === 'laporan' && (
+              <div className="space-y-6 py-2">
+                {reportList.length > 0 ? (
+                  reportList.map((report: any) => (
+                    <div key={report.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-sm font-black text-gray-800 leading-tight">{report.title}</h3>
+                          <p className="text-[10px] text-gray-400 font-medium mt-1">
+                            {report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Baru Saja'}
+                          </p>
+                        </div>
+                        {report.amountSpent > 0 && (
+                          <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                            Tersalurkan: Rp {Number(report.amountSpent).toLocaleString('id-ID')}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">{report.description}</p>
+                      
+                      {report.images && report.images.length > 0 && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2">
+                          {report.images.map((imgUrl: string, imgIdx: number) => (
+                            <div key={imgIdx} className="rounded-xl overflow-hidden aspect-video bg-gray-50 border border-gray-100 shadow-sm">
+                              <img src={imgUrl} alt={`Dokumentasi ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-10 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+                    <p className="text-sm font-bold text-gray-600">Belum ada laporan penyaluran dana.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'donatur' && (
               <div className="space-y-3 py-2">
                 {donorList.length > 0 ? (
                   [...donorList].reverse().map((donor: any, idx: number) => (
@@ -204,7 +254,8 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
               <label className="text-[11px] font-bold text-gray-500 block mb-1.5">Nominal Infak (Rp)</label>
               <div className="relative flex items-center">
                 <span className="absolute left-3.5 text-xs font-bold text-gray-400">Rp</span>
-                <input type="text" placeholder="Minimal 10.000" className="w-full border border-gray-200 rounded-xl pl-9 pr-3.5 py-2.5 text-xs font-bold text-gray-800 focus:outline-emerald-500" value={amount} onChange={handleAmountChange} />
+                {/* 🚀 FIXED: Placeholder diubah menjadi Minimal 40.000 */}
+                <input type="text" placeholder="Minimal 40.000" className="w-full border border-gray-200 rounded-xl pl-9 pr-3.5 py-2.5 text-xs font-bold text-gray-800 focus:outline-emerald-500" value={amount} onChange={handleAmountChange} />
               </div>
             </div>
 

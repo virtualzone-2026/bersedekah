@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const sanityClient = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '',
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   apiVersion: '2026-06-20',
   useCdn: false, // Wajib false agar artikel baru langsung muncul real-time tanpa delay CDN
@@ -31,11 +31,13 @@ function timeAgo(dateString: string) {
 
 export async function GET() {
   try {
-    // 🚀 FIXED QUERY GROQ: Menarik category murni sebagai string text cadangan jika referensi kosong
+    // 🚀 FIXED QUERY GROQ: Menambahkan youtubeUrl ke dalam query data dari Sanity
     const query = `*[_type == "news"] | order(publishedAt desc)[0..11] {
       "id": _id,
       "slug": slug.current,
       title,
+      contentType, 
+      youtubeUrl,  // 🌟 FIXED: Wajib ditarik agar frontend bisa dapet ID video YouTube!
       "image": image.asset->url,
       "category": coalesce(category->title, category, "Kabar Terbaru"),
       publishedAt
@@ -47,10 +49,13 @@ export async function GET() {
       next: { revalidate: 0 }
     });
 
+    // Proyeksikan data hasil fetch dan sertakan property youtubeUrl ke dalam mapping objek
     const formattedNews = sanityNews.map((item: any) => ({
       id: item.id,
       slug: item.slug,
       title: item.title,
+      contentType: item.contentType || 'text', 
+      youtubeUrl: item.youtubeUrl || null, // 🌟 FIXED: Diteruskan ke objek frontend
       image: item.image || '/images/placeholder.jpg',
       category: item.category,
       publishedAt: item.publishedAt,

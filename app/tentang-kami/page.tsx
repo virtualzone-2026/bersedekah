@@ -1,12 +1,56 @@
-// app/tentang-kami/page.tsx
 import React from 'react';
+import { Metadata } from 'next';
+import { createClient } from 'next-sanity';
 
-export const metadata = {
+// Inisialisasi Sanity Client
+const sanityClient = createClient({
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'jmgc1ejr',
+  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
+  apiVersion: '2026-06-20',
+  useCdn: false,
+});
+
+// 🚀 JURUS SAKTI ANTI-CACHE: Memaksa halaman untuk selalu mengambil data segar dari Sanity
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export const metadata: Metadata = {
   title: 'Tentang Kami - Yayasan Indonesia Mengaji',
   description: 'Mengenal lebih dekat Yayasan Indonesia Mengaji, visi misi, dan komitmen kami dalam membangun generasi Rabbani yang cinta Al-Qur\'an.',
 };
 
-export default function TentangKamiPage() {
+export default async function TentangKamiPage() {
+  // 🚀 Fetch data profil dari Sanity Studio
+  // Jika dokumen belum dibuat di Sanity, sistem otomatis menggunakan default fallback data di bawah
+  const query = `*[_type == "aboutUs"][0] {
+    heroTitle,
+    heroDescription,
+    storyTitle,
+    storyContent1,
+    storyContent2,
+    "storyImageUrl": storyImage.asset->url,
+    visi,
+    misi
+  }`;
+
+  const data = await sanityClient.fetch(query);
+
+  // 📦 Data Cadangan (Fallback) jika admin belum mengisi apa-apa di Sanity
+  const content = {
+    heroTitle: data?.heroTitle || "Menyebarkan Ilmu, Kebaikan & Hidayah",
+    heroDescription: data?.heroDescription || "Yayasan Indonesia Mengaji hadir sebagai jembatan kebaikan untuk mencetak generasi yang Qur'ani, amanah, dan berwawasan luas melalui transformasi dakwah digital.",
+    storyTitle: data?.storyTitle || "Membangun Peradaban Lewat Gerakan Qur'ani",
+    storyContent1: data?.storyContent1 || "Indonesia Mengaji bermula dari kepedulian mendalam terhadap pentingnya akses pendidikan Al-Qur'an dan syiar dakwah yang menyentuh seluruh lapisan masyarakat. Kami percaya bahwa nilai-nilai suci Al-Qur'an adalah fondasi utama dalam membangun moral bangsa.",
+    storyContent2: data?.storyContent2 || "Dengan memanfaatkan perkembangan teknologi modern, kami mengintegrasikan sistem filantropi Islam secara akuntabel. Setiap rupiah infak yang dialirkan oleh para donatur dikelola secara terstruktur guna melahirkan kemaslahatan yang berkelanjutan.",
+    storyImageUrl: data?.storyImageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
+    visi: data?.visi || "Menjadi lembaga filantropi dan dakwah Islam terdepan yang profesional, transparan, serta adaptif dalam melahirkan masyarakat madani yang mencintai, memahami, dan mengamalkan Al-Qur'an.",
+    misi: data?.misi || [
+      "Menyelenggarakan program edukasi dan pemberantasan buta aksara Al-Qur'an di berbagai penjuru daerah.",
+      "Mengoptimalkan penggalangan dana infak/sedekah berbasis teknologi digital terintegrasi yang mudah diakses.",
+      "Menyalurkan amanah donasi secara berkala, akurat, dan transparan demi kemandirian umat di sektor pendidikan dan kemanusiaan."
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-gray-50/50 text-gray-800 font-sans selection:bg-emerald-100 selection:text-emerald-800">
       
@@ -18,10 +62,10 @@ export default function TentangKamiPage() {
             Profil Yayasan
           </span>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
-            Menyebarkan Ilmu, Kebaikan & Hidayah
+            {content.heroTitle}
           </h1>
           <p className="text-emerald-100/80 text-sm md:text-base max-w-2xl mx-auto font-medium leading-relaxed">
-            Yayasan Indonesia Mengaji hadir sebagai jembatan kebaikan untuk mencetak generasi yang Qur&apos;ani, amanah, dan berwawasan luas melalui transformasi dakwah digital.
+            {content.heroDescription}
           </p>
         </div>
       </section>
@@ -48,20 +92,20 @@ export default function TentangKamiPage() {
         <section className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-4">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">
-              Membangun Peradaban Lewat <span className="text-emerald-600">Gerakan Qur&apos;ani</span>
+              {content.storyTitle}
             </h2>
             <div className="h-1 w-20 bg-emerald-500 rounded-full"></div>
             <p className="text-sm md:text-base text-gray-600 leading-relaxed font-normal">
-              Indonesia Mengaji bermula dari kepedulian mendalam terhadap pentingnya akses pendidikan Al-Qur&apos;an dan syiar dakwah yang menyentuh seluruh lapisan masyarakat. Kami percaya bahwa nilai-nilai suci Al-Qur&apos;an adalah fondasi utama dalam membangun moral bangsa.
+              {content.storyContent1}
             </p>
             <p className="text-sm md:text-base text-gray-600 leading-relaxed font-normal">
-              Dengan memanfaatkan perkembangan teknologi modern, kami mengintegrasikan sistem filantropi Islam secara akuntabel. Setiap rupiah infak yang dialirkan oleh para donatur dikelola secara terstruktur guna melahirkan kemaslahatan yang berkelanjutan.
+              {content.storyContent2}
             </p>
           </div>
           <div className="rounded-3xl overflow-hidden bg-gray-100 aspect-[4/3] shadow-md border border-gray-200/40 relative">
             <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/20 to-transparent"></div>
             <img 
-              src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800" 
+              src={content.storyImageUrl} 
               alt="Aktivitas Sosial Keagamaan" 
               className="w-full h-full object-cover"
             />
@@ -86,7 +130,7 @@ export default function TentangKamiPage() {
                 </div>
                 <h3 className="text-xl font-black text-gray-800">Visi Kami</h3>
                 <p className="text-sm text-gray-600 leading-relaxed font-normal">
-                  Menjadi lembaga filantropi dan dakwah Islam terdepan yang profesional, transparan, serta adaptif dalam melahirkan masyarakat madani yang mencintai, memahami, dan mengamalkan Al-Qur&apos;an.
+                  {content.visi}
                 </p>
               </div>
             </div>
@@ -99,18 +143,12 @@ export default function TentangKamiPage() {
                 </div>
                 <h3 className="text-xl font-black text-gray-800">Misi Kami</h3>
                 <ul className="text-sm text-gray-600 space-y-3 font-medium">
-                  <li className="flex items-start gap-2.5">
-                    <span className="text-emerald-500 mt-0.5">✔</span>
-                    <span>Menyelenggarakan program edukasi dan pemberantasan buta aksara Al-Qur&apos;an di berbagai penjuru daerah.</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <span className="text-emerald-500 mt-0.5">✔</span>
-                    <span>Mengoptimalkan penggalangan dana infak/sedekah berbasis teknologi digital terintegrasi yang mudah diakses.</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <span className="text-emerald-500 mt-0.5">✔</span>
-                    <span>Menyalurkan amanah donasi secara berkala, akurat, dan transparan demi kemandirian umat di sektor pendidikan dan kemanusiaan.</span>
-                  </li>
+                  {content.misi.map((misiItem: string, index: number) => (
+                    <li key={index} className="flex items-start gap-2.5">
+                      <span className="text-emerald-500 mt-0.5">✔</span>
+                      <span>{misiItem}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
