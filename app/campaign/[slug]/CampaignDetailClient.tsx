@@ -56,6 +56,16 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
     };
   }, [loading, program]);
 
+  // 🚀 LOGIKA KONDISIONAL MINIMAL DONASI
+  // Khusus Wakaf Qur'an minimal Rp 40.000, program lainnya diset Rp 1.000
+  const isQuranProgram = 
+    program?.slug?.toLowerCase().includes('quran') || 
+    program?.title?.toLowerCase().includes('quran') ||
+    program?.category?.toLowerCase().includes('quran');
+
+  const minAmount = isQuranProgram ? 40000 : 1000;
+  const minAmountLabel = isQuranProgram ? '40.000' : '1.000';
+
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/[^0-9]/g, '');
     if (!rawValue) {
@@ -69,9 +79,9 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
   const handleDonate = async () => {
     const cleanAmount = amount.replace(/\./g, '');
     
-    // Minimal donasi diset Rp 40.000
-    if (!cleanAmount || Number(cleanAmount) < 40000) {
-      alert('Masukkan nominal donasi minimal Rp 40.000 ya!');
+    // Validasi nominal berdasarkan tipe program
+    if (!cleanAmount || Number(cleanAmount) < minAmount) {
+      alert(`Masukkan nominal donasi minimal Rp ${minAmountLabel} ya!`);
       return;
     }
 
@@ -254,7 +264,13 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
               <label className="text-[11px] font-bold text-gray-500 block mb-1.5">Nominal Infak (Rp)</label>
               <div className="relative flex items-center">
                 <span className="absolute left-3.5 text-xs font-bold text-gray-400">Rp</span>
-                <input type="text" placeholder="Minimal 40.000" className="w-full border border-gray-200 rounded-xl pl-9 pr-3.5 py-2.5 text-xs font-bold text-gray-800 focus:outline-emerald-500" value={amount} onChange={handleAmountChange} />
+                <input 
+                  type="text" 
+                  placeholder={`Minimal ${minAmountLabel}`} 
+                  className="w-full border border-gray-200 rounded-xl pl-9 pr-3.5 py-2.5 text-xs font-bold text-gray-800 focus:outline-emerald-500" 
+                  value={amount} 
+                  onChange={handleAmountChange} 
+                />
               </div>
             </div>
 
