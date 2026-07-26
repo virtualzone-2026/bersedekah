@@ -1,3 +1,4 @@
+// sanity/schemaTypes/category.ts
 import { defineField, defineType } from 'sanity';
 
 export default defineType({
@@ -18,7 +19,6 @@ export default defineType({
       options: {
         source: 'title',
         maxLength: 96,
-        slugify: (input) => input.toLowerCase().replace(/\s+/g, '-').slice(0, 96),
       },
       validation: (Rule) => Rule.required().error('Slug kategori wajib digenerate'),
     }),
@@ -30,4 +30,17 @@ export default defineType({
       description: 'Penjelasan singkat mengenai ruang lingkup kategori ini (opsional).',
     }),
   ],
+  preview: {
+    select: {
+      title: 'title',
+      subtitle: 'description',
+    },
+    prepare(selection) {
+      const { title, subtitle } = selection;
+      return {
+        title: title || 'Kategori Tanpa Nama',
+        subtitle: subtitle || 'Tidak ada deskripsi',
+      };
+    },
+  },
 });

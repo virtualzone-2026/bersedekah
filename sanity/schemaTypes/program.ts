@@ -1,3 +1,4 @@
+// sanity/schemaTypes/program.ts
 import { defineField, defineType } from 'sanity';
 
 export default defineType({
@@ -46,12 +47,11 @@ export default defineType({
     }),
     defineField({
       name: 'collectedRaw',
-      title: 'Nominal Terkumpul (Otomatis dari Pakasir)',
+      title: 'Nominal Terkumpul (Otomatis dari Webhook)',
       type: 'number',
       initialValue: 0,
-      // 🚀 FIXED: Dibuat readOnly agar admin di Sanity tidak bisa edit manual & merusak hitungan webhook!
-      readOnly: true, 
-      description: 'Field ini terkunci otomatis. Angka akan bertambah sendiri secara realtime saat donasi QRIS sukses.',
+      readOnly: true, // Dibuat readOnly agar admin tidak salah edit
+      description: 'Field ini terkunci otomatis. Angka akan bertambah secara realtime saat donasi QRIS sukses.',
     }),
     defineField({
       name: 'targetAmount',
@@ -64,16 +64,16 @@ export default defineType({
       name: 'description',
       title: 'Cerita / Deskripsi Lengkap',
       type: 'array',
-      of: [{ type: 'block' }],
+      // 🚀 DIPERBAIKI: Ditambahkan type 'image' agar bisa upload gambar di dalam artikel/cerita
+      of: [{ type: 'block' }, { type: 'image', options: { hotspot: true } }],
       description: 'Tulis narasi lengkap atau cerita edukasi program di sini.',
     }),
-    // 🚀 FIXED: Menambahkan wadah Array Donatur agar Sanity bisa menampung nama & nominal yang dikirim Webhook
     defineField({
       name: 'donors',
       title: 'Daftar Donatur Terverifikasi',
       type: 'array',
-      readOnly: true, // Biar tidak bisa dimanipulasi manual dari dashboard oleh admin
-      description: 'List riwayat nama hamba allah dan donatur yang masuk dari sistem QRIS Pakasir.',
+      readOnly: true, // Mencegah manipulasi manual dari dashboard
+      description: 'List riwayat donatur yang masuk dari sistem pembayaran.',
       of: [
         {
           type: 'object',
@@ -83,8 +83,31 @@ export default defineType({
             { name: 'amount', type: 'number', title: 'Nominal Donasi' },
             { name: 'date', type: 'string', title: 'Tanggal Donasi' },
           ],
+          // 🚀 DIPERBAIKI: Menambahkan preview agar nama & nominal kelihatan rapi di Studio
+          preview: {
+            select: {
+              title: 'name',
+              subtitle: 'amount',
+              date: 'date',
+            },
+            prepare(selection) {
+              const { title, subtitle, date } = selection;
+              const formattedAmount = subtitle ? `Rp ${Number(subtitle).toLocaleString('id-ID')}` : 'Rp 0';
+              return {
+                title: title || 'Hamba Allah',
+                subtitle: `${formattedAmount} • ${date || 'Tanpa Tanggal'}`,
+              };
+            },
+          },
         },
       ],
     }),
   ],
+  preview: {
+    select: {
+      title: 'title',
+      subtitle: 'category',
+      media: 'image',
+    },
+  },
 });
