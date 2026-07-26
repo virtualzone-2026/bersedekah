@@ -56,12 +56,19 @@ export default function CampaignDetailClient({ slug, initialProgram }: { slug: s
     };
   }, [loading, program]);
 
-  // 🚀 LOGIKA KONDISIONAL MINIMAL DONASI
-  // Khusus Wakaf Qur'an minimal Rp 40.000, program lainnya diset Rp 1.000
+  // 🚀 LOGIKA PINTAR MINIMAL DONASI (KEBAL TANDA PETIK & CARAKTER KHUSUS)
+  const normalizeText = (text: string = '') => 
+    text.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const normalizedSlug = normalizeText(program?.slug);
+  const normalizedTitle = normalizeText(program?.title);
+  const normalizedCategory = normalizeText(program?.category);
+
+  // Cek apakah judul, slug, atau kategori mengandung kata 'quran'
   const isQuranProgram = 
-    program?.slug?.toLowerCase().includes('quran') || 
-    program?.title?.toLowerCase().includes('quran') ||
-    program?.category?.toLowerCase().includes('quran');
+    normalizedSlug.includes('quran') || 
+    normalizedTitle.includes('quran') || 
+    normalizedCategory.includes('quran');
 
   const minAmount = isQuranProgram ? 40000 : 1000;
   const minAmountLabel = isQuranProgram ? '40.000' : '1.000';
